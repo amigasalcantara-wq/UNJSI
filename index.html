@@ -5,22 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>ORÁCULO // REINOS DO SABER</title>
+  <title>ORÁCULO // PROTOCOLO MATRIX</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #07090e;
-      --card-bg: #111622;
-      --accent: #00f2fe;
-      --accent-glow: rgba(0, 242, 254, 0.4);
-      --player-hp: #00ff88;
-      --boss-hp: #ff0055;
-      --warning: #f59e0b;
-      --border: #232d42;
+      --bg: #05070a;
+      --lane-border: #142036;
+      --cyan: #00f2fe;
+      --pink: #ff0055;
+      --yellow: #facc15;
+      --green: #00ff88;
       --text: #e2e8f0;
-      --pixel-font: 'Press Start 2P', monospace;
-      --ui-font: 'Rajdhani', sans-serif;
+      --font-retro: 'Press Start 2P', monospace;
+      --font-ui: 'Rajdhani', sans-serif;
     }
 
     * {
@@ -35,564 +33,458 @@
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: var(--ui-font);
+      font-family: var(--font-ui);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 12px;
-      padding-top: max(12px, env(safe-area-inset-top));
-      padding-bottom: max(16px, env(safe-area-inset-bottom));
+      padding: 8px;
+      padding-top: max(8px, env(safe-area-inset-top));
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      overflow: hidden;
     }
 
-    /* BARRA SUPERIOR DE RECURSOS */
-    .top-hud {
+    /* HUD SUPERIOR */
+    .hud {
       width: 100%;
-      max-width: 600px;
+      max-width: 480px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 14px;
-      margin-bottom: 12px;
+      background: #0d121f;
+      border: 2px solid #1c2740;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: var(--font-retro);
+      font-size: 0.65rem;
+      margin-bottom: 6px;
     }
-    .hud-chip { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.9rem; }
-    .hud-chip span { color: var(--accent); }
+    .hud-val { color: var(--cyan); }
+    .combo-glow { color: var(--yellow); text-shadow: 0 0 8px rgba(250, 204, 21, 0.6); }
 
-    /* TELAS (VIEWPORT NAVEGÁVEL) */
-    .view-screen {
+    /* ARENA DE LANES EM TEMPO REAL */
+    .matrix-arena {
       width: 100%;
-      max-width: 600px;
+      max-width: 480px;
+      height: 380px;
+      background: radial-gradient(ellipse at bottom, #0f172a 0%, #030508 100%);
+      border: 2px solid #202d4a;
+      border-radius: 10px;
+      position: relative;
       display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .hidden { display: none !important; }
-
-    /* ECRÃ 1: MAPA DOS REINOS / HUB */
-    .realm-title {
-      font-family: var(--pixel-font);
-      font-size: 0.8rem;
-      color: #94a3b8;
-      text-align: center;
-      margin: 6px 0;
-      letter-spacing: 1px;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
     }
 
-    .realms-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
-
-    .realm-card {
-      background: var(--card-bg);
-      border: 2px solid var(--border);
-      border-radius: 12px;
-      padding: 14px;
+    .lane {
+      flex: 1;
+      height: 100%;
+      border-right: 1px dashed var(--lane-border);
+      position: relative;
       cursor: pointer;
       display: flex;
-      align-items: center;
-      gap: 14px;
-      transition: all 0.2s ease;
-      position: relative;
-      overflow: hidden;
+      justify-content: center;
     }
-    .realm-card:active { transform: scale(0.98); }
-    .realm-card:hover { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
-    .realm-icon { font-size: 2.2rem; }
-    .realm-info { flex: 1; }
-    .realm-name { font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
-    .realm-desc { font-size: 0.8rem; color: #94a3b8; line-height: 1.3; margin-bottom: 6px; }
-    .realm-progress-bar {
-      width: 100%; height: 6px; background: #1a2233; border-radius: 3px; overflow: hidden;
-    }
-    .realm-progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
-
-    /* ECRÃ 2: ARENA DE COMBATE */
-    .arena-box {
-      background: radial-gradient(circle at center, #1b2438 0%, #080a12 100%);
-      border: 2px solid var(--border);
-      border-radius: 12px;
-      padding: 14px;
-      position: relative;
-    }
-    .shake { animation: shake 0.25s ease-in-out; }
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-6px); }
-      75% { transform: translateX(6px); }
+    .lane:last-child { border-right: none; }
+    .lane.active-lane {
+      background: rgba(0, 242, 254, 0.04);
     }
 
-    .status-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
-    .bar-wrap { width: 48%; }
-    .bar-label { font-family: var(--pixel-font); font-size: 0.55rem; margin-bottom: 4px; display: flex; justify-content: space-between; }
-    .bar-bg { width: 100%; height: 10px; background: #1c2436; border-radius: 3px; overflow: hidden; border: 1px solid #334155; }
-    .bar-fill { height: 100%; transition: width 0.3s; }
-
-    .duel-stage {
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      padding: 12px 0;
-    }
-    .fighter { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .fighter-sprite { font-size: 3rem; transition: transform 0.2s; }
-    .boss-glow { filter: drop-shadow(0 0 12px rgba(255,0,85,0.6)); font-size: 3.4rem; }
-    .hit-flash { filter: brightness(3) saturate(0) !important; }
-
-    .boss-bubble {
-      background: #0d121c;
-      border: 1px solid #28354d;
-      border-radius: 8px;
-      padding: 12px;
-      font-size: 0.92rem;
-      line-height: 1.4;
-      margin-top: 6px;
+    /* LINHA DE DEFESA (BASE) */
+    .defense-line {
+      position: absolute;
+      bottom: 45px;
+      left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      box-shadow: 0 0 10px var(--cyan);
     }
 
-    /* INVENTÁRIO DE FOCO */
-    .inventory-bar {
-      display: flex;
-      gap: 8px;
-      margin: 4px 0;
+    .player-node {
+      position: absolute;
+      bottom: 8px;
+      font-size: 1.8rem;
+      filter: drop-shadow(0 0 8px var(--cyan));
+      transition: left 0.15s ease-out;
     }
-    .btn-item {
-      flex: 1;
-      background: #192233;
-      border: 1px solid var(--border);
+
+    /* INIMIGOS QUE DESCEM */
+    .enemy {
+      position: absolute;
+      width: 90%;
+      background: #141b2b;
+      border: 1px solid var(--pink);
       border-radius: 6px;
-      padding: 6px 10px;
-      color: #cbd5e1;
+      padding: 6px 4px;
+      text-align: center;
       font-size: 0.75rem;
       font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
+      color: #fff;
+      box-shadow: 0 0 12px rgba(255, 0, 85, 0.4);
+      transform: translateY(0);
+      pointer-events: none;
     }
-    .btn-item:active { transform: scale(0.95); }
-    .btn-item.disabled { opacity: 0.4; pointer-events: none; }
-
-    /* DECK DE GOLPES */
-    .deck { display: flex; flex-direction: column; gap: 8px; }
-    .btn-strike {
-      background: #121824;
-      border: 1px solid #23304a;
-      border-radius: 8px;
-      padding: 12px 14px;
-      color: #f1f5f9;
-      font-size: 0.88rem;
-      font-weight: 600;
-      line-height: 1.35;
-      text-align: left;
-      cursor: pointer;
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      -webkit-tap-highlight-color: transparent;
+    .enemy-type {
+      font-family: var(--font-retro);
+      font-size: 0.5rem;
+      color: var(--pink);
+      margin-bottom: 2px;
+      display: block;
     }
-    .btn-strike:active { transform: scale(0.98); background: #1c2638; border-color: var(--accent); }
-    .btn-strike.hidden-action { display: none !important; }
 
-    /* FOOTER CONTROLS */
-    .bottom-nav {
+    /* CHIPS DE BATALHA (MÃO DO JOGADOR) */
+    .deck-container {
+      width: 100%;
+      max-width: 480px;
       margin-top: 8px;
       display: flex;
-      gap: 8px;
+      flex-direction: column;
+      gap: 6px;
     }
-    .btn-nav {
-      flex: 1;
-      padding: 10px;
-      background: #1c2436;
-      border: 1px solid var(--border);
+    .deck-title {
+      font-family: var(--font-retro);
+      font-size: 0.55rem;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+    }
+    .chips-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .chip-btn {
+      background: #101624;
+      border: 1px solid #273552;
       border-radius: 8px;
-      color: #fff;
-      font-family: var(--ui-font);
+      padding: 10px 4px;
+      color: #e2e8f0;
+      font-family: var(--font-ui);
+      font-size: 0.85rem;
       font-weight: 700;
-      font-size: 0.95rem;
+      text-align: center;
       cursor: pointer;
-      text-transform: uppercase;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .chip-btn.selected {
+      border-color: var(--cyan);
+      box-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
+      background: #182238;
+      transform: scale(1.02);
+    }
+    .chip-tag {
+      font-family: var(--font-retro);
+      font-size: 0.5rem;
+      color: var(--cyan);
+    }
+
+    /* OVERCLOCK (FRENESI DE FOCO) */
+    .overclock-active {
+      border-color: var(--yellow) !important;
+      box-shadow: 0 0 25px rgba(250, 204, 21, 0.5) !important;
+    }
+
+    /* FLASH DE DANO */
+    .screen-shake {
+      animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both;
+    }
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-4px, 0, 0); }
+      30%, 70% { transform: translate3d(5px, 0, 0); }
     }
   </style>
 </head>
 <body>
 
-  <!-- STATUS HUD -->
-  <div class="top-hud">
-    <div class="hud-chip">LV. <span id="hud-level">1</span></div>
-    <div class="hud-chip">💎 <span id="hud-xp">0</span> XP</div>
-    <div class="hud-chip">⚡ STREAK <span id="hud-streak" style="color:var(--player-hp)">0x</span></div>
+  <!-- STATUS EM TEMPO REAL -->
+  <div class="hud">
+    <div>VIDA: <span id="txt-hp" class="hud-val" style="color:var(--green)">100%</span></div>
+    <div>PONTOS: <span id="txt-score" class="hud-val">0</span></div>
+    <div id="box-combo" class="combo-glow">0x COMBO</div>
   </div>
 
-  <!-- VIEW 1: SELETOR DE MUNDOS / HUB -->
-  <div class="view-screen" id="screen-hub">
-    <div class="realm-title">ESCOLHA SEU REINO DE TREINAMENTO</div>
-    <div class="realms-grid" id="realms-list"></div>
+  <!-- ARENA MATRIX DE 3 FAIXAS -->
+  <div class="matrix-arena" id="arena">
+    <div class="defense-line"></div>
+    <div class="lane" id="lane-0" onclick="fireAtLane(0)"></div>
+    <div class="lane" id="lane-1" onclick="fireAtLane(1)"></div>
+    <div class="lane" id="lane-2" onclick="fireAtLane(2)"></div>
+    <div class="player-node" id="player">🥋</div>
   </div>
 
-  <!-- VIEW 2: ARENA DE BATALHA -->
-  <div class="view-screen hidden" id="screen-battle">
-    <div class="arena-box" id="arena">
-      <div class="status-row">
-        <div class="bar-wrap">
-          <div class="bar-label"><span>VOCÊ</span><span id="txt-player-hp">100/100</span></div>
-          <div class="bar-bg"><div class="bar-fill" id="fill-player-hp" style="background:var(--player-hp); width:100%;"></div></div>
-        </div>
-        <div class="bar-wrap">
-          <div class="bar-label"><span id="txt-boss-name">BOSS</span><span id="txt-boss-hp">100/100</span></div>
-          <div class="bar-bg"><div class="bar-fill" id="fill-boss-hp" style="background:var(--boss-hp); width:100%;"></div></div>
-        </div>
-      </div>
-
-      <div class="duel-stage">
-        <div class="fighter">
-          <div class="fighter-sprite" id="sprite-player">🥋</div>
-        </div>
-        <div style="font-family:var(--pixel-font); font-size:0.9rem; color:#ff0055;">VS</div>
-        <div class="fighter">
-          <div class="fighter-sprite boss-glow" id="sprite-boss">👹</div>
-        </div>
-      </div>
-
-      <div class="boss-bubble" id="boss-challenge">Carregando enigma...</div>
+  <!-- DECK DE CHIPS TÉCNICOS -->
+  <div class="deck-container">
+    <div class="deck-title">
+      <span>CHIPS DISPONÍVEIS (SELECIONE E TOQUE NA FAIXA):</span>
+      <span id="txt-status" style="color:var(--cyan)">SISTEMA PRONTO</span>
     </div>
-
-    <!-- INVENTÁRIO DE FOCO PARA TDAH -->
-    <div class="inventory-bar">
-      <button class="btn-item" id="btn-potion" onclick="usePotion()">🧪 Olho Crítico (<span id="potion-count">2</span>)</button>
-      <button class="btn-item" onclick="fleeToHub()">🗺️ Abandonar Duelo</button>
-    </div>
-
-    <!-- AÇÕES DE GOLPE -->
-    <div class="deck" id="strike-deck"></div>
+    <div class="chips-grid" id="chips-area"></div>
   </div>
 
   <script>
     /* =========================================================================
-       CREDENCIAS DO SUPABASE (CONFIGURADAS)
+       CREDENCIAS SUPABASE INTEGRADAS
        ========================================================================= */
     const SUPABASE_URL = "https://aazdwdbmmvokborisuxd.supabase.co";
     const SUPABASE_KEY = "sb_publishable_TVwbt5bsVssBt7h4oSAe6Q_JzaJ1p4X";
     const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    /* ÁUDIO NATIVO RETRÔ PARA IOS (SEM DEPENDÊNCIA EXTERNA) */
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    let audioCtx = null;
-    function playSfx(freq1, freq2, type = 'square', duration = 0.15) {
-      if (!audioCtx) audioCtx = new AudioContext();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
+    /* ÁUDIO NATIVO RETRÔ (SEM LATÊNCIA NO IOS) */
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let actx = null;
+    function beep(fStart, fEnd, type = 'square', dur = 0.12) {
+      if (!actx) actx = new AudioCtx();
+      if (actx.state === 'suspended') actx.resume();
+      const osc = actx.createOscillator();
+      const gain = actx.createGain();
       osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      const t = audioCtx.currentTime;
+      gain.connect(actx.destination);
+      const now = actx.currentTime;
       osc.type = type;
-      osc.frequency.setValueAtTime(freq1, t);
-      osc.frequency.exponentialRampToValueAtTime(freq2, t + duration);
-      gain.gain.setValueAtTime(0.2, t);
-      gain.gain.linearRampToValueAtTime(0.01, t + duration);
-      osc.start(t); osc.stop(t + duration);
+      osc.frequency.setValueAtTime(fStart, now);
+      osc.frequency.exponentialRampToValueAtTime(fEnd, now + dur);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + dur);
+      osc.start(now);
+      osc.stop(now + dur);
     }
 
-    /* BASE DE DADOS ORGANIZADA POR REINOS */
-    const REINOS = [
+    /* BANCO DE ENIGMAS / INIMIGOS E RESPOSTAS */
+    const ENEMY_DATABASE = [
       {
-        id: "filosofia",
-        name: "Cidadela da Filosofia",
-        desc: "Epistemologia Socrática, Crítica Nietzscheana, Poder Foucaultiano e Descartes.",
-        icon: "🏛️",
-        bosses: [
-          {
-            name: "Devoir Cartesiano",
-            sprite: "🧊",
-            challenge: "Descartes duvida das certezas sensíveis para refundar o saber. Qual ação quebra a ilusão?",
-            options: [
-              { text: "Ativar Dúvida Metódica: Rejeitar antigas opiniões até achar algo firme.", type: "crit" },
-              { text: "Fundamentar as ciências na evidência absoluta dos sentidos humanos.", type: "almost" },
-              { text: "Concluir que toda verdade científica é rigorosamente impossível.", type: "fail" }
-            ]
-          },
-          {
-            name: "Oráculo Socrático",
-            sprite: "📜",
-            challenge: "Na epistemologia grega, o que verdadeiramente instiga o início do conhecimento?",
-            options: [
-              { text: "A consciência da própria ignorância e o 'Conhece-te a ti mesmo'.", type: "crit" },
-              { text: "A aceitação da Doxa como sinónimo de conhecimento racional supremo.", type: "almost" },
-              { text: "A constatação da incapacidade humana irremediável de pensar.", type: "fail" }
-            ]
-          },
-          {
-            name: "Sentinela de Foucault",
-            sprite: "👁️",
-            challenge: "Como a microfísica de Michel Foucault define o poder nas instituições modernas?",
-            options: [
-              { text: "Rede Capilar e Produtiva: Que dissemina saber, prazer e discursos.", type: "crit" },
-              { text: "Apenas um aparelho centralizado estatal que dita restrições e proibições.", type: "almost" },
-              { text: "Um mecanismo restrito exclusivamente à criação estética de conceitos.", type: "fail" }
-            ]
-          }
-        ]
+        tag: "ARQUIVO C",
+        label: "Auditoria contínua: Ler/Gravar sem apagar",
+        targetChip: "r+",
+        trapChip: "w+"
       },
       {
-        id: "programacao_c",
-        name: "Fortaleza de Sistemas & C",
-        desc: "Arquitetura Von Neumann, Manipulação de Registros fopen, Recursividade e Memória.",
-        icon: "⚡",
-        bosses: [
-          {
-            name: "Guardião de Ficheiros",
-            sprite: "💾",
-            challenge: "Auditoria ininterrupta: Gravar e consultar registros sem apagar histórico prévio no fopen():",
-            options: [
-              { text: "Modo 'r+': Abertura para leitura e escrita preservando os dados existentes.", type: "crit" },
-              { text: "Modo 'w+': Leitura e escrita completa reiniciando o arquivo a zero.", type: "almost" },
-              { text: "Modo 'a': Para ler e gravar ao mesmo tempo no início do ficheiro.", type: "fail" }
-            ]
-          },
-          {
-            name: "Espectro Recursivo",
-            sprite: "🌀",
-            challenge: "Chamadas sucessivas ameaçam a memória da Stack! Como deter o Stack Overflow?",
-            options: [
-              { text: "Condição-Base de Parada: Encerrar a auto-invocação no caso trivial.", type: "crit" },
-              { text: "Substituição forçada de todos os laços e ponteiros do programa.", type: "almost" },
-              { text: "Duplicação contínua da pilha de chamadas da CPU.", type: "fail" }
-            ]
-          },
-          {
-            name: "Titã de Von Neumann",
-            sprite: "⚙️",
-            challenge: "Quais são os três subsistemas nucleares internos da CPU clássica?",
-            options: [
-              { text: "Registradores + Unidade de Controle (UC) + ULA.", type: "crit" },
-              { text: "Registradores + Barramento de Dados + Memória Cache L1.", type: "almost" },
-              { text: "Buffers de Entrada + Memória Virtual + Placa Mãe.", type: "fail" }
-            ]
-          }
-        ]
+        tag: "EPISTEME",
+        label: "Dúvida radical dos sentidos para refundar o saber",
+        targetChip: "Descartes",
+        trapChip: "Platão"
       },
       {
-        id: "metodologia",
-        name: "Templo da Metodologia & Análise",
-        desc: "Estruturas de Dados FIFO, Gênero Ensaio Acadêmico e Algoritmos de Laço.",
-        icon: "📚",
-        bosses: [
-          {
-            name: "Mestre da Escrita Crítica",
-            sprite: "🖋️",
-            challenge: "Segundo a prática acadêmica (Carmo, 2021), quais são os traços do gênero ensaio?",
-            options: [
-              { text: "Hibridização, temporalidade e independência autoral.", type: "crit" },
-              { text: "Hibridização, dependência estrita e restrição investigativa.", type: "almost" },
-              { text: "Mera reprodução acrítica e restrição metodológica.", type: "fail" }
-            ]
-          },
-          {
-            name: "Autómato das Filas",
-            sprite: "📦",
-            challenge: "Qual a propriedade estrutural inegociável da estrutura de dados FILA (Queue)?",
-            options: [
-              { text: "Acesso de entrada em um extremo e saída estritamente pelo outro (FIFO).", type: "crit" },
-              { text: "Inserção e remoção no mesmo extremo seguindo o protocolo LIFO.", type: "almost" },
-              { text: "Inserção e remoção no centro arbitrário através de vetores fixos.", type: "fail" }
-            ]
-          }
-        ]
+        tag: "CPU CORE",
+        label: "Registradores + Unidade Controle + ...?",
+        targetChip: "ULA",
+        trapChip: "Barramentos"
+      },
+      {
+        tag: "PODER",
+        label: "Microfísica: Rede capilar produtiva de saber",
+        targetChip: "Foucault",
+        trapChip: "Nietzsche"
+      },
+      {
+        tag: "MEMÓRIA",
+        label: "Mecanismo obrigatório para travar Stack Overflow",
+        targetChip: "Caso-Base",
+        trapChip: "Ponteiro"
+      },
+      {
+        tag: "ESTRUTURAS",
+        label: "Entrada num extremo e saída estrita no outro",
+        targetChip: "Fila (FIFO)",
+        trapChip: "Pilha (LIFO)"
       }
     ];
 
-    /* ESTADO DO JOGADOR */
-    let player = {
-      level: 1,
-      xp: 0,
-      streak: 0,
-      potions: 2,
-      progress: { filosofia: 0, programacao_c: 0, metodologia: 0 }
-    };
+    const ALL_CHIPS = ["r+", "w+", "Descartes", "Platão", "ULA", "Barramentos", "Foucault", "Nietzsche", "Caso-Base", "Fila (FIFO)"];
 
-    let activeRealm = null;
-    let activeBossIdx = 0;
     let playerHP = 100;
-    let bossHP = 100;
+    let score = 0;
+    let streak = 0;
+    let activeEnemies = [];
+    let selectedChip = null;
+    let gameLoop = null;
+    let spawnTimer = null;
 
-    function renderHub() {
-      document.getElementById('screen-hub').classList.remove('hidden');
-      document.getElementById('screen-battle').classList.add('hidden');
-
-      const list = document.getElementById('realms-list');
-      list.innerHTML = '';
-
-      REINOS.forEach(r => {
-        const total = r.bosses.length;
-        const current = player.progress[r.id] || 0;
-        const pct = Math.min(100, Math.round((current / total) * 100));
-
-        const card = document.createElement('div');
-        card.className = 'realm-card';
-        card.innerHTML = `
-          <div class="realm-icon">${r.icon}</div>
-          <div class="realm-info">
-            <div class="realm-name">${r.name}</div>
-            <div class="realm-desc">${r.desc}</div>
-            <div class="realm-progress-bar">
-              <div class="realm-progress-fill" style="width:${pct}%"></div>
-            </div>
-            <div style="font-size:0.75rem; color:#38bdf8; margin-top:4px;">Domínio: ${pct}% (${current}/${total} Conquistados)</div>
-          </div>
-        `;
-        card.onclick = () => startRealm(r);
-        list.appendChild(card);
-      });
-
-      updateHUD();
+    // Posiciona o jogador na faixa
+    function updatePlayerPos(laneIdx) {
+      const p = document.getElementById('player');
+      const positions = ['12%', '45%', '78%'];
+      p.style.left = positions[laneIdx];
     }
 
-    function startRealm(realm) {
-      activeRealm = realm;
-      activeBossIdx = player.progress[realm.id] >= realm.bosses.length ? 0 : player.progress[realm.id];
-      document.getElementById('screen-hub').classList.add('hidden');
-      document.getElementById('screen-battle').classList.remove('hidden');
-      initCombat();
-    }
+    function renderDeck() {
+      const area = document.getElementById('chips-area');
+      area.innerHTML = '';
+      
+      // Garante uma rotação dinâmica de 6 chips
+      const currentTargetChips = activeEnemies.map(e => e.data.targetChip);
+      const randomFillers = ALL_CHIPS.filter(c => !currentTargetChips.includes(c)).sort(() => Math.random() - 0.5);
+      const hand = [...new Set([...currentTargetChips, ...randomFillers])].slice(0, 6).sort(() => Math.random() - 0.5);
 
-    function initCombat() {
-      const boss = activeRealm.bosses[activeBossIdx];
-      playerHP = 100;
-      bossHP = 100;
-      updateCombatBars();
-
-      document.getElementById('txt-boss-name').innerText = boss.name.toUpperCase();
-      document.getElementById('sprite-boss').innerText = boss.sprite;
-      document.getElementById('boss-challenge').innerText = boss.challenge;
-      document.getElementById('potion-count').innerText = player.potions;
-
-      const deck = document.getElementById('strike-deck');
-      deck.innerHTML = '';
-
-      // Embaralhar ações
-      const acts = [...boss.options].sort(() => Math.random() - 0.5);
-
-      acts.forEach(a => {
+      hand.forEach((chipName, idx) => {
         const btn = document.createElement('button');
-        btn.className = 'btn-strike';
-        btn.dataset.type = a.type;
-        btn.innerHTML = `<span>⚔️</span> <span>${a.text}</span>`;
-        btn.onclick = () => strike(a, btn);
-        deck.appendChild(btn);
+        btn.className = 'chip-btn';
+        if (selectedChip === chipName) btn.classList.add('selected');
+        btn.innerHTML = `<span class="chip-tag">CHIP 0${idx+1}</span><span>${chipName}</span>`;
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          selectChip(chipName);
+        };
+        area.appendChild(btn);
       });
     }
 
-    function strike(action, btnElement) {
-      const arena = document.getElementById('arena');
-      const bossSprite = document.getElementById('sprite-boss');
-      const playerSprite = document.getElementById('sprite-player');
+    function selectChip(name) {
+      selectedChip = name;
+      beep(600, 800, 'sine', 0.08);
+      document.querySelectorAll('.chip-btn').forEach(b => {
+        b.classList.toggle('selected', b.innerText.includes(name));
+      });
+      document.getElementById('txt-status').innerText = `ARMADO: [${name}]`;
+    }
 
-      if (action.type === 'crit') {
-        bossHP = Math.max(0, bossHP - 60);
-        bossSprite.classList.add('hit-flash');
-        playSfx(520, 200, 'square', 0.2);
-        player.xp += 40 + (player.streak * 5);
-        player.streak += 1;
-        setTimeout(() => bossSprite.classList.remove('hit-flash'), 250);
-      } else if (action.type === 'almost') {
-        bossHP = Math.max(0, bossHP - 15);
-        playerHP = Math.max(0, playerHP - 25);
-        arena.classList.add('shake');
-        playSfx(140, 60, 'sawtooth', 0.3);
-        player.streak = 0;
-        setTimeout(() => arena.classList.remove('shake'), 250);
+    function spawnEnemy() {
+      if (activeEnemies.length >= 3) return;
+
+      const randomData = ENEMY_DATABASE[Math.floor(Math.random() * ENEMY_DATABASE.length)];
+      const lane = Math.floor(Math.random() * 3);
+
+      // Evita dois inimigos sobrepostos na mesma lane
+      if (activeEnemies.some(e => e.lane === lane && e.y < 90)) return;
+
+      const laneElem = document.getElementById(`lane-${lane}`);
+      const el = document.createElement('div');
+      el.className = 'enemy';
+      el.innerHTML = `<span class="enemy-type">${randomData.tag}</span>${randomData.label}`;
+      laneElem.appendChild(el);
+
+      activeEnemies.push({
+        lane: lane,
+        y: 0,
+        speed: 1.1 + (streak * 0.1), // Fica mais rápido com combos
+        element: el,
+        data: randomData
+      });
+
+      renderDeck();
+    }
+
+    function fireAtLane(laneIdx) {
+      updatePlayerPos(laneIdx);
+
+      if (!selectedChip) {
+        document.getElementById('txt-status').innerText = "⚠️ SELECIONE UM CHIP PRIMEIRO!";
+        beep(120, 80, 'sawtooth', 0.1);
+        return;
+      }
+
+      // Procura o inimigo mais próximo na faixa selecionada
+      const targetEnemy = activeEnemies
+        .filter(e => e.lane === laneIdx)
+        .sort((a, b) => b.y - a.y)[0];
+
+      if (targetEnemy) {
+        if (selectedChip === targetEnemy.data.targetChip) {
+          // ACERTO CRÍTICO!
+          beep(400, 950, 'square', 0.15);
+          score += 50 + (streak * 10);
+          streak++;
+          destroyEnemy(targetEnemy, true);
+        } else {
+          // DISTRATOR / ERRO
+          beep(180, 60, 'sawtooth', 0.25);
+          streak = 0;
+          playerHP = Math.max(0, playerHP - 15);
+          triggerShake();
+        }
       } else {
-        playerHP = Math.max(0, playerHP - 40);
-        arena.classList.add('shake');
-        playerSprite.classList.add('hit-flash');
-        playSfx(100, 40, 'sawtooth', 0.35);
-        player.streak = 0;
-        setTimeout(() => {
-          arena.classList.remove('shake');
-          playerSprite.classList.remove('hit-flash');
-        }, 250);
+        // Disparo no vácuo
+        beep(250, 150, 'triangle', 0.08);
       }
 
-      updateCombatBars();
       updateHUD();
-
-      if (bossHP <= 0) {
-        playSfx(300, 600, 'triangle', 0.4);
-        if (activeBossIdx + 1 > player.progress[activeRealm.id]) {
-          player.progress[activeRealm.id] = activeBossIdx + 1;
-        }
-        syncProgress();
-        setTimeout(() => {
-          if (activeBossIdx + 1 < activeRealm.bosses.length) {
-            activeBossIdx++;
-            initCombat();
-          } else {
-            alert(`🎉 REINO CONQUISTADO! Você completou ${activeRealm.name}!`);
-            renderHub();
-          }
-        }, 700);
-      } else if (playerHP <= 0) {
-        playSfx(80, 40, 'sawtooth', 0.5);
-        alert("💀 Derrota tática! Reorganize a sua mente e tente de novo.");
-        initCombat();
-      }
+      selectedChip = null;
+      renderDeck();
     }
 
-    function usePotion() {
-      if (player.potions <= 0) return;
-      // Procura a opção quase certa ou falha e remove da tela
-      const buttons = document.querySelectorAll('.btn-strike');
-      for (let b of buttons) {
-        if (b.dataset.type === 'almost' || b.dataset.type === 'fail') {
-          b.classList.add('hidden-action');
-          break;
-        }
-      }
-      player.potions--;
-      document.getElementById('potion-count').innerText = player.potions;
-      playSfx(400, 800, 'sine', 0.15);
+    function destroyEnemy(enemy, isKill) {
+      enemy.element.remove();
+      activeEnemies = activeEnemies.filter(e => e !== enemy);
     }
 
-    function fleeToHub() {
-      renderHub();
-    }
-
-    function updateCombatBars() {
-      document.getElementById('fill-player-hp').style.width = playerHP + '%';
-      document.getElementById('fill-boss-hp').style.width = bossHP + '%';
-      document.getElementById('txt-player-hp').innerText = `${playerHP}/100`;
-      document.getElementById('txt-boss-hp').innerText = `${bossHP}/100`;
+    function triggerShake() {
+      const arena = document.getElementById('arena');
+      arena.classList.add('screen-shake');
+      setTimeout(() => arena.classList.remove('screen-shake'), 220);
     }
 
     function updateHUD() {
-      document.getElementById('hud-xp').innerText = player.xp;
-      document.getElementById('hud-streak').innerText = `${player.streak}x`;
-      player.level = Math.floor(player.xp / 120) + 1;
-      document.getElementById('hud-level').innerText = player.level;
-    }
+      document.getElementById('txt-hp').innerText = `${playerHP}%`;
+      document.getElementById('txt-score').innerText = score;
+      const cBox = document.getElementById('box-combo');
+      cBox.innerText = `${streak}x COMBO`;
 
-    async function syncProgress() {
-      try {
-        await sbClient.from('oraculo_progress').upsert({
-          user_id: 'amanda_anshiran',
-          level: player.level,
-          xp: player.xp,
-          streak: player.streak,
-          weaknesses: player.progress,
-          updated_at: new Date().toISOString()
-        });
-      } catch (err) {
-        console.warn("Supabase auto-save:", err);
+      if (streak >= 4) {
+        document.getElementById('arena').classList.add('overclock-active');
+        cBox.innerText = `🔥 OVERCLOCK ${streak}x`;
+      } else {
+        document.getElementById('arena').classList.remove('overclock-active');
+      }
+
+      if (playerHP <= 25) {
+        document.getElementById('txt-hp').style.color = 'var(--pink)';
       }
     }
 
-    // Inicialização
-    renderHub();
+    function runGameLoop() {
+      activeEnemies.forEach(enemy => {
+        enemy.y += enemy.speed;
+        enemy.element.style.top = `${enemy.y}px`;
+
+        // Se o inimigo cruzar a linha de defesa (310px)
+        if (enemy.y >= 310) {
+          playerHP = Math.max(0, playerHP - 20);
+          streak = 0;
+          beep(120, 40, 'sawtooth', 0.3);
+          triggerShake();
+          destroyEnemy(enemy, false);
+          updateHUD();
+
+          if (playerHP <= 0) {
+            gameOver();
+          }
+        }
+      });
+    }
+
+    function gameOver() {
+      clearInterval(gameLoop);
+      clearInterval(spawnTimer);
+      alert(`☠️ BRECHA NO SISTEMA! Pontuação Final: ${score}`);
+      saveProgress(score);
+      // Reinicia arena
+      location.reload();
+    }
+
+    async function saveProgress(finalScore) {
+      try {
+        await sbClient.from('oraculo_progress').upsert({
+          user_id: 'amanda_anshiran',
+          level: Math.floor(finalScore / 200) + 1,
+          xp: finalScore,
+          streak: streak,
+          weaknesses: { modo: "arcade_realtime", score: finalScore },
+          updated_at: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn("Sync:", err);
+      }
+    }
+
+    // Inicialização do Jogo
+    updatePlayerPos(1);
+    renderDeck();
+    gameLoop = setInterval(runGameLoop, 30);
+    spawnTimer = setInterval(spawnEnemy, 2400);
   </script>
 </body>
 </html>
