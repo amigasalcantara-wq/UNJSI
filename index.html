@@ -2,37 +2,34 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <!-- Viewport travada contra zoom acidental no iOS e respeitando safe-area -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  
-  <!-- Configurações Nativas de WebApp para iOS (Tela Cheia) -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Oráculo RPG">
-  
-  <title>ORÁCULO RPG // BATTLE DUNGEON</title>
+  <title>ORÁCULO // REINOS DO SABER</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #090a10;
-      --panel: #121622;
+      --bg: #07090e;
+      --card-bg: #111622;
       --accent: #00f2fe;
+      --accent-glow: rgba(0, 242, 254, 0.4);
       --player-hp: #00ff88;
       --boss-hp: #ff0055;
+      --warning: #f59e0b;
+      --border: #232d42;
       --text: #e2e8f0;
       --pixel-font: 'Press Start 2P', monospace;
       --ui-font: 'Rajdhani', sans-serif;
     }
 
-    * { 
-      box-sizing: border-box; 
-      margin: 0; 
-      padding: 0; 
+    * {
+      box-sizing: border-box;
+      margin: 0; padding: 0;
       user-select: none;
-      -webkit-user-select: none; /* Desativa seleção azul de texto no iOS */
-      -webkit-touch-callout: none; /* Desativa menu ao segurar o dedo no iOS */
-      touch-action: manipulation; /* Desativa delay de clique duplo do iOS */
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
     }
 
     body {
@@ -40,212 +37,238 @@
       color: var(--text);
       font-family: var(--ui-font);
       min-height: 100vh;
-      min-height: -webkit-fill-available;
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 12px;
-      /* Suporte ao Notch e Barra Home do iPhone */
       padding-top: max(12px, env(safe-area-inset-top));
       padding-bottom: max(16px, env(safe-area-inset-bottom));
-      overflow-x: hidden;
     }
 
-    /* ARENA DE BATALHA */
-    .battle-scene {
+    /* BARRA SUPERIOR DE RECURSOS */
+    .top-hud {
       width: 100%;
       max-width: 600px;
-      background: radial-gradient(circle at center, #1b233a 0%, #080a12 100%);
-      border: 2px solid #2a3550;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+    }
+    .hud-chip { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.9rem; }
+    .hud-chip span { color: var(--accent); }
+
+    /* TELAS (VIEWPORT NAVEGÁVEL) */
+    .view-screen {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .hidden { display: none !important; }
+
+    /* ECRÃ 1: MAPA DOS REINOS / HUB */
+    .realm-title {
+      font-family: var(--pixel-font);
+      font-size: 0.8rem;
+      color: #94a3b8;
+      text-align: center;
+      margin: 6px 0;
+      letter-spacing: 1px;
+    }
+
+    .realms-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .realm-card {
+      background: var(--card-bg);
+      border: 2px solid var(--border);
       border-radius: 12px;
       padding: 14px;
-      position: relative;
-      box-shadow: 0 0 25px rgba(0,0,0,0.8);
-      margin-bottom: 10px;
-      transition: transform 0.1s ease;
-    }
-
-    .shake {
-      animation: shakeAnim 0.3s cubic-bezier(.36,.07,.19,.97) both;
-    }
-    @keyframes shakeAnim {
-      10%, 90% { transform: translate3d(-3px, 0, 0); }
-      20%, 80% { transform: translate3d(5px, 0, 0); }
-      30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
-      40%, 60% { transform: translate3d(6px, 0, 0); }
-    }
-
-    /* BARRAS DE STATUS */
-    .hud-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    .status-box { width: 48%; }
-    .entity-name {
-      font-family: var(--pixel-font);
-      font-size: 0.6rem;
-      margin-bottom: 4px;
-      display: flex;
-      justify-content: space-between;
-    }
-    .bar-outer {
-      width: 100%;
-      height: 12px;
-      background: #202738;
-      border: 1px solid #3b4866;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-    .bar-fill {
-      height: 100%;
-      transition: width 0.3s ease-out;
-    }
-    #player-hp-bar { background: var(--player-hp); width: 100%; }
-    #boss-hp-bar { background: var(--boss-hp); width: 100%; }
-
-    /* PALCO DOS PERSONAGENS */
-    .stage {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 14px;
-      min-height: 110px;
-    }
-    .avatar {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .sprite {
-      font-size: 3rem;
-      filter: drop-shadow(0 0 10px rgba(0,242,254,0.4));
-      transition: transform 0.2s ease;
-    }
-    .boss-sprite {
-      font-size: 3.5rem;
-      filter: drop-shadow(0 0 12px rgba(255,0,85,0.5));
-    }
-    .hit-flash {
-      filter: brightness(3) saturate(0) !important;
-    }
-
-    /* DIÁLOGO / DESAFIO */
-    .boss-dialogue {
-      background: rgba(18, 22, 34, 0.95);
-      border: 1px solid #3b4866;
-      border-radius: 8px;
-      padding: 10px;
-      font-size: 0.88rem;
-      line-height: 1.4;
-      min-height: 60px;
-      margin-bottom: 6px;
-    }
-
-    /* BOTÕES DE AÇÃO / GOLPES */
-    .deck-container {
-      width: 100%;
-      max-width: 600px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .combat-action {
-      background: #161c2a;
-      border: 1px solid #2e3a54;
-      border-radius: 8px;
-      color: #e2e8f0;
-      padding: 12px 14px;
-      text-align: left;
-      font-family: var(--ui-font);
-      font-size: 0.9rem;
-      font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 10px;
-      -webkit-tap-highlight-color: transparent; /* Remove flash cinza ao tocar no iOS */
+      gap: 14px;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
     }
-    .combat-action:active {
-      transform: scale(0.97);
-      background: #242c3d;
-      border-color: var(--accent);
+    .realm-card:active { transform: scale(0.98); }
+    .realm-card:hover { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
+    .realm-icon { font-size: 2.2rem; }
+    .realm-info { flex: 1; }
+    .realm-name { font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .realm-desc { font-size: 0.8rem; color: #94a3b8; line-height: 1.3; margin-bottom: 6px; }
+    .realm-progress-bar {
+      width: 100%; height: 6px; background: #1a2233; border-radius: 3px; overflow: hidden;
     }
-    .action-icon {
-      font-family: var(--pixel-font);
-      font-size: 0.55rem;
-      background: #2a3550;
-      padding: 4px 6px;
-      border-radius: 4px;
-      color: var(--accent);
-      flex-shrink: 0;
+    .realm-progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
+
+    /* ECRÃ 2: ARENA DE COMBATE */
+    .arena-box {
+      background: radial-gradient(circle at center, #1b2438 0%, #080a12 100%);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      position: relative;
+    }
+    .shake { animation: shake 0.25s ease-in-out; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
     }
 
-    /* LOG DO COMBATE */
-    .combat-log {
-      width: 100%;
-      max-width: 600px;
-      margin-top: 10px;
-      background: #06070a;
-      border: 1px solid #1c2333;
+    .status-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+    .bar-wrap { width: 48%; }
+    .bar-label { font-family: var(--pixel-font); font-size: 0.55rem; margin-bottom: 4px; display: flex; justify-content: space-between; }
+    .bar-bg { width: 100%; height: 10px; background: #1c2436; border-radius: 3px; overflow: hidden; border: 1px solid #334155; }
+    .bar-fill { height: 100%; transition: width 0.3s; }
+
+    .duel-stage {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 12px 0;
+    }
+    .fighter { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .fighter-sprite { font-size: 3rem; transition: transform 0.2s; }
+    .boss-glow { filter: drop-shadow(0 0 12px rgba(255,0,85,0.6)); font-size: 3.4rem; }
+    .hit-flash { filter: brightness(3) saturate(0) !important; }
+
+    .boss-bubble {
+      background: #0d121c;
+      border: 1px solid #28354d;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.92rem;
+      line-height: 1.4;
+      margin-top: 6px;
+    }
+
+    /* INVENTÁRIO DE FOCO */
+    .inventory-bar {
+      display: flex;
+      gap: 8px;
+      margin: 4px 0;
+    }
+    .btn-item {
+      flex: 1;
+      background: #192233;
+      border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 8px;
-      font-family: monospace;
+      padding: 6px 10px;
+      color: #cbd5e1;
       font-size: 0.75rem;
-      min-height: 55px;
-      max-height: 80px;
-      overflow-y: auto;
-      color: #7dd3fc;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-item:active { transform: scale(0.95); }
+    .btn-item.disabled { opacity: 0.4; pointer-events: none; }
+
+    /* DECK DE GOLPES */
+    .deck { display: flex; flex-direction: column; gap: 8px; }
+    .btn-strike {
+      background: #121824;
+      border: 1px solid #23304a;
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: #f1f5f9;
+      font-size: 0.88rem;
+      font-weight: 600;
+      line-height: 1.35;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-strike:active { transform: scale(0.98); background: #1c2638; border-color: var(--accent); }
+    .btn-strike.hidden-action { display: none !important; }
+
+    /* FOOTER CONTROLS */
+    .bottom-nav {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+    }
+    .btn-nav {
+      flex: 1;
+      padding: 10px;
+      background: #1c2436;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: #fff;
+      font-family: var(--ui-font);
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      text-transform: uppercase;
     }
   </style>
 </head>
 <body>
 
-  <div class="battle-scene" id="arena">
-    <div class="hud-bar">
-      <div class="status-box">
-        <div class="entity-name">
-          <span>AMANDA (VOCÊ)</span>
-          <span id="player-hp-txt">100/100</span>
-        </div>
-        <div class="bar-outer">
-          <div class="bar-fill" id="player-hp-bar"></div>
-        </div>
-      </div>
-      <div class="status-box">
-        <div class="entity-name">
-          <span id="boss-name">BOSS</span>
-          <span id="boss-hp-txt">100/100</span>
-        </div>
-        <div class="bar-outer">
-          <div class="bar-fill" id="boss-hp-bar"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="stage">
-      <div class="avatar">
-        <div class="sprite" id="player-sprite">🥋</div>
-        <span style="font-size:0.7rem; font-weight:700; color:var(--player-hp);">HERÓI</span>
-      </div>
-      <div style="font-family:var(--pixel-font); font-size:1rem; color:#ff0055;">VS</div>
-      <div class="avatar">
-        <div class="sprite boss-sprite" id="boss-sprite">👹</div>
-        <span style="font-size:0.7rem; font-weight:700; color:var(--boss-hp);">TITÃ</span>
-      </div>
-    </div>
-
-    <div class="boss-dialogue" id="boss-speech">
-      Conectando ao Códice...
-    </div>
+  <!-- STATUS HUD -->
+  <div class="top-hud">
+    <div class="hud-chip">LV. <span id="hud-level">1</span></div>
+    <div class="hud-chip">💎 <span id="hud-xp">0</span> XP</div>
+    <div class="hud-chip">⚡ STREAK <span id="hud-streak" style="color:var(--player-hp)">0x</span></div>
   </div>
 
-  <div class="deck-container" id="actions-deck"></div>
+  <!-- VIEW 1: SELETOR DE MUNDOS / HUB -->
+  <div class="view-screen" id="screen-hub">
+    <div class="realm-title">ESCOLHA SEU REINO DE TREINAMENTO</div>
+    <div class="realms-grid" id="realms-list"></div>
+  </div>
 
-  <div class="combat-log" id="combat-log">
-    > Sessão iniciada. Toque em uma habilidade para contra-atacar!
+  <!-- VIEW 2: ARENA DE BATALHA -->
+  <div class="view-screen hidden" id="screen-battle">
+    <div class="arena-box" id="arena">
+      <div class="status-row">
+        <div class="bar-wrap">
+          <div class="bar-label"><span>VOCÊ</span><span id="txt-player-hp">100/100</span></div>
+          <div class="bar-bg"><div class="bar-fill" id="fill-player-hp" style="background:var(--player-hp); width:100%;"></div></div>
+        </div>
+        <div class="bar-wrap">
+          <div class="bar-label"><span id="txt-boss-name">BOSS</span><span id="txt-boss-hp">100/100</span></div>
+          <div class="bar-bg"><div class="bar-fill" id="fill-boss-hp" style="background:var(--boss-hp); width:100%;"></div></div>
+        </div>
+      </div>
+
+      <div class="duel-stage">
+        <div class="fighter">
+          <div class="fighter-sprite" id="sprite-player">🥋</div>
+        </div>
+        <div style="font-family:var(--pixel-font); font-size:0.9rem; color:#ff0055;">VS</div>
+        <div class="fighter">
+          <div class="fighter-sprite boss-glow" id="sprite-boss">👹</div>
+        </div>
+      </div>
+
+      <div class="boss-bubble" id="boss-challenge">Carregando enigma...</div>
+    </div>
+
+    <!-- INVENTÁRIO DE FOCO PARA TDAH -->
+    <div class="inventory-bar">
+      <button class="btn-item" id="btn-potion" onclick="usePotion()">🧪 Olho Crítico (<span id="potion-count">2</span>)</button>
+      <button class="btn-item" onclick="fleeToHub()">🗺️ Abandonar Duelo</button>
+    </div>
+
+    <!-- AÇÕES DE GOLPE -->
+    <div class="deck" id="strike-deck"></div>
   </div>
 
   <script>
@@ -256,211 +279,320 @@
     const SUPABASE_KEY = "sb_publishable_TVwbt5bsVssBt7h4oSAe6Q_JzaJ1p4X";
     const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    /* =========================================================================
-       SINTETIZADOR DE ÁUDIO RETRÔ EMBUTIDO (SUBSTITUI VIBRAÇÃO NO IPHONE)
-       ========================================================================= */
+    /* ÁUDIO NATIVO RETRÔ PARA IOS (SEM DEPENDÊNCIA EXTERNA) */
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
-
-    function playSfx(type) {
+    function playSfx(freq1, freq2, type = 'square', duration = 0.15) {
       if (!audioCtx) audioCtx = new AudioContext();
       if (audioCtx.state === 'suspended') audioCtx.resume();
-
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-
-      const now = audioCtx.currentTime;
-
-      if (type === 'hit') {
-        // Som de impacto crítico estridente
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(450, now);
-        osc.frequency.exponentialRampToValueAtTime(120, now + 0.15);
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
-        osc.start(now);
-        osc.stop(now + 0.15);
-      } else if (type === 'hurt') {
-        // Som de dano sofrido / erro
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(150, now);
-        osc.frequency.linearRampToValueAtTime(40, now + 0.25);
-        gain.gain.setValueAtTime(0.4, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
-        osc.start(now);
-        osc.stop(now + 0.25);
-      } else if (type === 'win') {
-        // Fanfarra de vitória curta
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(300, now);
-        osc.frequency.setValueAtTime(400, now + 0.1);
-        osc.frequency.setValueAtTime(600, now + 0.2);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
-        osc.start(now);
-        osc.stop(now + 0.35);
-      }
+      const t = audioCtx.currentTime;
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq1, t);
+      osc.frequency.exponentialRampToValueAtTime(freq2, t + duration);
+      gain.gain.setValueAtTime(0.2, t);
+      gain.gain.linearRampToValueAtTime(0.01, t + duration);
+      osc.start(t); osc.stop(t + duration);
     }
 
-    /* BASE DE BOSSES DAS PROVAS */
-    const BOSSES = [
+    /* BASE DE DADOS ORGANIZADA POR REINOS */
+    const REINOS = [
       {
-        name: "DEVOIR CARTESIANO",
-        sprite: "🧊",
-        challenge: "René Descartes duvida das sensações para fundamentar a ciência. Qual ação epistêmica quebra a ilusão?",
-        actions: [
-          { text: "Ativar Dúvida Metódica: Rejeitar antigas opiniões frágeis até achar base sólida.", type: "crit", info: "Acerto crítico! O método cartesiano reconstrói o saber pelo Cogito." },
-          { text: "Fundamentar tudo nos sentidos humanos com precisão.", type: "almost", info: "Quase acertou! Mas Descartes rejeita os sentidos por serem falíveis." },
-          { text: "Concluir que a verdade científica é impossível de encontrar.", type: "fail", info: "Erro! Descartes busca e encontra uma verdade indubitável." }
+        id: "filosofia",
+        name: "Cidadela da Filosofia",
+        desc: "Epistemologia Socrática, Crítica Nietzscheana, Poder Foucaultiano e Descartes.",
+        icon: "🏛️",
+        bosses: [
+          {
+            name: "Devoir Cartesiano",
+            sprite: "🧊",
+            challenge: "Descartes duvida das certezas sensíveis para refundar o saber. Qual ação quebra a ilusão?",
+            options: [
+              { text: "Ativar Dúvida Metódica: Rejeitar antigas opiniões até achar algo firme.", type: "crit" },
+              { text: "Fundamentar as ciências na evidência absoluta dos sentidos humanos.", type: "almost" },
+              { text: "Concluir que toda verdade científica é rigorosamente impossível.", type: "fail" }
+            ]
+          },
+          {
+            name: "Oráculo Socrático",
+            sprite: "📜",
+            challenge: "Na epistemologia grega, o que verdadeiramente instiga o início do conhecimento?",
+            options: [
+              { text: "A consciência da própria ignorância e o 'Conhece-te a ti mesmo'.", type: "crit" },
+              { text: "A aceitação da Doxa como sinónimo de conhecimento racional supremo.", type: "almost" },
+              { text: "A constatação da incapacidade humana irremediável de pensar.", type: "fail" }
+            ]
+          },
+          {
+            name: "Sentinela de Foucault",
+            sprite: "👁️",
+            challenge: "Como a microfísica de Michel Foucault define o poder nas instituições modernas?",
+            options: [
+              { text: "Rede Capilar e Produtiva: Que dissemina saber, prazer e discursos.", type: "crit" },
+              { text: "Apenas um aparelho centralizado estatal que dita restrições e proibições.", type: "almost" },
+              { text: "Um mecanismo restrito exclusivamente à criação estética de conceitos.", type: "fail" }
+            ]
+          }
         ]
       },
       {
-        name: "TITÃ DO PODER CAPILAR",
-        sprite: "👁️",
-        challenge: "Michel Foucault afirma que o poder não é apenas repressivo. Como ele age na sociedade moderna?",
-        actions: [
-          { text: "Rede Produtiva: Disseminar saber, produzir discursos e prazeres.", type: "crit", info: "Impacto devastador! A microfísica do poder é positiva e geradora de saber." },
-          { text: "Força de Restrição: Agir apenas proibindo e punindo o cidadão.", type: "almost", info: "Quase! Essa é a visão tradicional jurídica que Foucault justamente supera." },
-          { text: "Instrumento exclusivo de criação de conceitos filosóficos.", type: "fail", info: "Erro! Criar conceitos é a definição de Deleuze para a filosofia." }
+        id: "programacao_c",
+        name: "Fortaleza de Sistemas & C",
+        desc: "Arquitetura Von Neumann, Manipulação de Registros fopen, Recursividade e Memória.",
+        icon: "⚡",
+        bosses: [
+          {
+            name: "Guardião de Ficheiros",
+            sprite: "💾",
+            challenge: "Auditoria ininterrupta: Gravar e consultar registros sem apagar histórico prévio no fopen():",
+            options: [
+              { text: "Modo 'r+': Abertura para leitura e escrita preservando os dados existentes.", type: "crit" },
+              { text: "Modo 'w+': Leitura e escrita completa reiniciando o arquivo a zero.", type: "almost" },
+              { text: "Modo 'a': Para ler e gravar ao mesmo tempo no início do ficheiro.", type: "fail" }
+            ]
+          },
+          {
+            name: "Espectro Recursivo",
+            sprite: "🌀",
+            challenge: "Chamadas sucessivas ameaçam a memória da Stack! Como deter o Stack Overflow?",
+            options: [
+              { text: "Condição-Base de Parada: Encerrar a auto-invocação no caso trivial.", type: "crit" },
+              { text: "Substituição forçada de todos os laços e ponteiros do programa.", type: "almost" },
+              { text: "Duplicação contínua da pilha de chamadas da CPU.", type: "fail" }
+            ]
+          },
+          {
+            name: "Titã de Von Neumann",
+            sprite: "⚙️",
+            challenge: "Quais são os três subsistemas nucleares internos da CPU clássica?",
+            options: [
+              { text: "Registradores + Unidade de Controle (UC) + ULA.", type: "crit" },
+              { text: "Registradores + Barramento de Dados + Memória Cache L1.", type: "almost" },
+              { text: "Buffers de Entrada + Memória Virtual + Placa Mãe.", type: "fail" }
+            ]
+          }
         ]
       },
       {
-        name: "AUTÔMATO DE FICHEIROS C",
-        sprite: "💾",
-        challenge: "O log da fintech expande sem parar e precisa de leitura/escrita sem apagar dados. Qual modo do fopen() você conjura?",
-        actions: [
-          { text: "Conjurar Modo 'r+' (Atualização sem truncar o ficheiro).", type: "crit", info: "Dano Crítico! 'r+' permite leitura/escrita mantendo o conteúdo preservado." },
-          { text: "Conjurar Modo 'w+' (Leitura e escrita de alto nível).", type: "almost", info: "Armadilha fatal! 'w+' apaga todo o ficheiro no segundo em que abre!" },
-          { text: "Conjurar Modo 'a' para ler e escrever no final.", type: "fail", info: "Erro! 'a' isolado não permite leitura (exigiria 'a+')." }
-        ]
-      },
-      {
-        name: "SPECTRO RECURSIVO",
-        sprite: "🌀",
-        challenge: "A chamada recursiva está prestes a transbordar a memória! Qual mecanismo impede o Stack Overflow?",
-        actions: [
-          { text: "Condição-Base de Parada: Encerrar as auto-invocações no caso trivial.", type: "crit", info: "Estouro evitado! Sem caso-base a pilha cresce infinitamente até travar." },
-          { text: "Substituição irrestrita de todos os laços de repetição por ponteiros.", type: "almost", info: "Quase! Recursão substitui loops, mas o que impede o estouro é a paragem." },
-          { text: "Duplicação contínua da pilha de execução da CPU.", type: "fail", info: "Erro! Duplicar a pilha acelera o esgotamento da memória." }
-        ]
-      },
-      {
-        name: "GUARDIÃO DE VON NEUMANN",
-        sprite: "⚡",
-        challenge: "O processador exige seus três componentes essenciais de cálculo e controlo para operar. Quem você invoca?",
-        actions: [
-          { text: "Registradores + Unidade de Controle + ULA (Unidade Lógica e Aritmética).", type: "crit", info: "Núcleo ativado! Essa é a tríade fundamental de funcionamento da CPU." },
-          { text: "Registradores + Barramentos + Memória Cache.", type: "almost", info: "Quase! Barramentos comunicam os módulos, mas não calculam." },
-          { text: "Buffers de I/O + Memória Virtual + Placa Mãe.", type: "fail", info: "Incorreto! Componentes externos não integram o núcleo da CPU." }
+        id: "metodologia",
+        name: "Templo da Metodologia & Análise",
+        desc: "Estruturas de Dados FIFO, Gênero Ensaio Acadêmico e Algoritmos de Laço.",
+        icon: "📚",
+        bosses: [
+          {
+            name: "Mestre da Escrita Crítica",
+            sprite: "🖋️",
+            challenge: "Segundo a prática acadêmica (Carmo, 2021), quais são os traços do gênero ensaio?",
+            options: [
+              { text: "Hibridização, temporalidade e independência autoral.", type: "crit" },
+              { text: "Hibridização, dependência estrita e restrição investigativa.", type: "almost" },
+              { text: "Mera reprodução acrítica e restrição metodológica.", type: "fail" }
+            ]
+          },
+          {
+            name: "Autómato das Filas",
+            sprite: "📦",
+            challenge: "Qual a propriedade estrutural inegociável da estrutura de dados FILA (Queue)?",
+            options: [
+              { text: "Acesso de entrada em um extremo e saída estritamente pelo outro (FIFO).", type: "crit" },
+              { text: "Inserção e remoção no mesmo extremo seguindo o protocolo LIFO.", type: "almost" },
+              { text: "Inserção e remoção no centro arbitrário através de vetores fixos.", type: "fail" }
+            ]
+          }
         ]
       }
     ];
 
-    let currentBossIdx = 0;
+    /* ESTADO DO JOGADOR */
+    let player = {
+      level: 1,
+      xp: 0,
+      streak: 0,
+      potions: 2,
+      progress: { filosofia: 0, programacao_c: 0, metodologia: 0 }
+    };
+
+    let activeRealm = null;
+    let activeBossIdx = 0;
     let playerHP = 100;
     let bossHP = 100;
 
-    function initBattle() {
-      const b = BOSSES[currentBossIdx];
+    function renderHub() {
+      document.getElementById('screen-hub').classList.remove('hidden');
+      document.getElementById('screen-battle').classList.add('hidden');
+
+      const list = document.getElementById('realms-list');
+      list.innerHTML = '';
+
+      REINOS.forEach(r => {
+        const total = r.bosses.length;
+        const current = player.progress[r.id] || 0;
+        const pct = Math.min(100, Math.round((current / total) * 100));
+
+        const card = document.createElement('div');
+        card.className = 'realm-card';
+        card.innerHTML = `
+          <div class="realm-icon">${r.icon}</div>
+          <div class="realm-info">
+            <div class="realm-name">${r.name}</div>
+            <div class="realm-desc">${r.desc}</div>
+            <div class="realm-progress-bar">
+              <div class="realm-progress-fill" style="width:${pct}%"></div>
+            </div>
+            <div style="font-size:0.75rem; color:#38bdf8; margin-top:4px;">Domínio: ${pct}% (${current}/${total} Conquistados)</div>
+          </div>
+        `;
+        card.onclick = () => startRealm(r);
+        list.appendChild(card);
+      });
+
+      updateHUD();
+    }
+
+    function startRealm(realm) {
+      activeRealm = realm;
+      activeBossIdx = player.progress[realm.id] >= realm.bosses.length ? 0 : player.progress[realm.id];
+      document.getElementById('screen-hub').classList.add('hidden');
+      document.getElementById('screen-battle').classList.remove('hidden');
+      initCombat();
+    }
+
+    function initCombat() {
+      const boss = activeRealm.bosses[activeBossIdx];
+      playerHP = 100;
       bossHP = 100;
-      updateBars();
-      
-      document.getElementById('boss-name').innerText = b.name;
-      document.getElementById('boss-sprite').innerText = b.sprite;
-      document.getElementById('boss-speech').innerText = b.challenge;
-      
-      const deck = document.getElementById('actions-deck');
+      updateCombatBars();
+
+      document.getElementById('txt-boss-name').innerText = boss.name.toUpperCase();
+      document.getElementById('sprite-boss').innerText = boss.sprite;
+      document.getElementById('boss-challenge').innerText = boss.challenge;
+      document.getElementById('potion-count').innerText = player.potions;
+
+      const deck = document.getElementById('strike-deck');
       deck.innerHTML = '';
 
-      const shuffledActions = [...b.actions].sort(() => Math.random() - 0.5);
+      // Embaralhar ações
+      const acts = [...boss.options].sort(() => Math.random() - 0.5);
 
-      shuffledActions.forEach((act, idx) => {
+      acts.forEach(a => {
         const btn = document.createElement('button');
-        btn.className = 'combat-action';
-        btn.innerHTML = `<span class="action-icon">GOLPE ${idx+1}</span> <span>${act.text}</span>`;
-        btn.onclick = () => executeTurn(act);
+        btn.className = 'btn-strike';
+        btn.dataset.type = a.type;
+        btn.innerHTML = `<span>⚔️</span> <span>${a.text}</span>`;
+        btn.onclick = () => strike(a, btn);
         deck.appendChild(btn);
       });
     }
 
-    function executeTurn(action) {
+    function strike(action, btnElement) {
       const arena = document.getElementById('arena');
-      const bossSprite = document.getElementById('boss-sprite');
-      const playerSprite = document.getElementById('player-sprite');
+      const bossSprite = document.getElementById('sprite-boss');
+      const playerSprite = document.getElementById('sprite-player');
 
       if (action.type === 'crit') {
-        bossHP = Math.max(0, bossHP - 55);
+        bossHP = Math.max(0, bossHP - 60);
         bossSprite.classList.add('hit-flash');
-        playSfx('hit');
-        logCombat(`💥 GOLPE CRÍTICO! ${action.info}`);
+        playSfx(520, 200, 'square', 0.2);
+        player.xp += 40 + (player.streak * 5);
+        player.streak += 1;
         setTimeout(() => bossSprite.classList.remove('hit-flash'), 250);
       } else if (action.type === 'almost') {
         bossHP = Math.max(0, bossHP - 15);
-        playerHP = Math.max(0, playerHP - 20);
+        playerHP = Math.max(0, playerHP - 25);
         arena.classList.add('shake');
-        playSfx('hurt');
-        logCombat(`⚠️ ARMADILHA DO DISTRATOR: ${action.info} Você sofreu 20 de dano!`);
-        setTimeout(() => arena.classList.remove('shake'), 300);
+        playSfx(140, 60, 'sawtooth', 0.3);
+        player.streak = 0;
+        setTimeout(() => arena.classList.remove('shake'), 250);
       } else {
-        playerHP = Math.max(0, playerHP - 35);
+        playerHP = Math.max(0, playerHP - 40);
         arena.classList.add('shake');
         playerSprite.classList.add('hit-flash');
-        playSfx('hurt');
-        logCombat(`☠️ FALHA CRÍTICA! ${action.info} O Guardião contra-atacou (-35 HP)!`);
+        playSfx(100, 40, 'sawtooth', 0.35);
+        player.streak = 0;
         setTimeout(() => {
           arena.classList.remove('shake');
           playerSprite.classList.remove('hit-flash');
-        }, 300);
+        }, 250);
       }
 
-      updateBars();
+      updateCombatBars();
+      updateHUD();
 
       if (bossHP <= 0) {
-        playSfx('win');
-        logCombat(`🏆 VITÓRIA! Você dominou o conceito de ${BOSSES[currentBossIdx].name}!`);
-        saveProgressToSupabase(BOSSES[currentBossIdx].name, "VITÓRIA");
+        playSfx(300, 600, 'triangle', 0.4);
+        if (activeBossIdx + 1 > player.progress[activeRealm.id]) {
+          player.progress[activeRealm.id] = activeBossIdx + 1;
+        }
+        syncProgress();
         setTimeout(() => {
-          currentBossIdx = (currentBossIdx + 1) % BOSSES.length;
-          playerHP = Math.min(100, playerHP + 40);
-          initBattle();
-        }, 1200);
+          if (activeBossIdx + 1 < activeRealm.bosses.length) {
+            activeBossIdx++;
+            initCombat();
+          } else {
+            alert(`🎉 REINO CONQUISTADO! Você completou ${activeRealm.name}!`);
+            renderHub();
+          }
+        }, 700);
       } else if (playerHP <= 0) {
-        logCombat(`💀 HP ESGOTADO! Reorganizando estratégia...`);
-        playerHP = 100;
-        setTimeout(initBattle, 1500);
+        playSfx(80, 40, 'sawtooth', 0.5);
+        alert("💀 Derrota tática! Reorganize a sua mente e tente de novo.");
+        initCombat();
       }
     }
 
-    function updateBars() {
-      document.getElementById('player-hp-bar').style.width = playerHP + '%';
-      document.getElementById('boss-hp-bar').style.width = bossHP + '%';
-      document.getElementById('player-hp-txt').innerText = `${playerHP}/100`;
-      document.getElementById('boss-hp-txt').innerText = `${bossHP}/100`;
+    function usePotion() {
+      if (player.potions <= 0) return;
+      // Procura a opção quase certa ou falha e remove da tela
+      const buttons = document.querySelectorAll('.btn-strike');
+      for (let b of buttons) {
+        if (b.dataset.type === 'almost' || b.dataset.type === 'fail') {
+          b.classList.add('hidden-action');
+          break;
+        }
+      }
+      player.potions--;
+      document.getElementById('potion-count').innerText = player.potions;
+      playSfx(400, 800, 'sine', 0.15);
     }
 
-    function logCombat(msg) {
-      const log = document.getElementById('combat-log');
-      log.innerHTML = `> ${msg}<br>` + log.innerHTML;
+    function fleeToHub() {
+      renderHub();
     }
 
-    async function saveProgressToSupabase(bossName, status) {
+    function updateCombatBars() {
+      document.getElementById('fill-player-hp').style.width = playerHP + '%';
+      document.getElementById('fill-boss-hp').style.width = bossHP + '%';
+      document.getElementById('txt-player-hp').innerText = `${playerHP}/100`;
+      document.getElementById('txt-boss-hp').innerText = `${bossHP}/100`;
+    }
+
+    function updateHUD() {
+      document.getElementById('hud-xp').innerText = player.xp;
+      document.getElementById('hud-streak').innerText = `${player.streak}x`;
+      player.level = Math.floor(player.xp / 120) + 1;
+      document.getElementById('hud-level').innerText = player.level;
+    }
+
+    async function syncProgress() {
       try {
         await sbClient.from('oraculo_progress').upsert({
           user_id: 'amanda_anshiran',
-          level: currentBossIdx + 1,
-          xp: (currentBossIdx + 1) * 100,
-          streak: 1,
-          weaknesses: { last_boss: bossName, result: status },
+          level: player.level,
+          xp: player.xp,
+          streak: player.streak,
+          weaknesses: player.progress,
           updated_at: new Date().toISOString()
         });
-      } catch (e) {
-        console.log("Supabase save:", e);
+      } catch (err) {
+        console.warn("Supabase auto-save:", err);
       }
     }
 
-    initBattle();
+    // Inicialização
+    renderHub();
   </script>
 </body>
 </html>
