@@ -2,743 +2,465 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ORÁCULO RPG // Protocolo Maestria</title>
-  <!-- Supabase JS Client CDN -->
+  <!-- Viewport travada contra zoom acidental no iOS e respeitando safe-area -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  
+  <!-- Configurações Nativas de WebApp para iOS (Tela Cheia) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Oráculo RPG">
+  
+  <title>ORÁCULO RPG // BATTLE DUNGEON</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Google Fonts: Estética Arcade & Cyberpunk Limpa -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0b0e14;
-      --card-bg: #151922;
+      --bg: #090a10;
+      --panel: #121622;
       --accent: #00f2fe;
-      --accent-glow: rgba(0, 242, 254, 0.35);
-      --success: #00ff88;
-      --danger: #ff0055;
-      --warning: #ffb703;
+      --player-hp: #00ff88;
+      --boss-hp: #ff0055;
       --text: #e2e8f0;
-      --text-muted: #94a3b8;
-      --border: #232b3e;
-      --font-code: 'Fira Code', monospace;
-      --font-title: 'Rajdhani', sans-serif;
+      --pixel-font: 'Press Start 2P', monospace;
+      --ui-font: 'Rajdhani', sans-serif;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      user-select: none;
+      -webkit-user-select: none; /* Desativa seleção azul de texto no iOS */
+      -webkit-touch-callout: none; /* Desativa menu ao segurar o dedo no iOS */
+      touch-action: manipulation; /* Desativa delay de clique duplo do iOS */
+    }
+
     body {
-      background-color: var(--bg);
+      background: var(--bg);
       color: var(--text);
-      font-family: var(--font-code);
+      font-family: var(--ui-font);
       min-height: 100vh;
+      min-height: -webkit-fill-available;
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 12px;
+      /* Suporte ao Notch e Barra Home do iPhone */
+      padding-top: max(12px, env(safe-area-inset-top));
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
       overflow-x: hidden;
     }
 
-    /* Status Bar RPG Superior */
-    .hud {
+    /* ARENA DE BATALHA */
+    .battle-scene {
       width: 100%;
-      max-width: 680px;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
+      max-width: 600px;
+      background: radial-gradient(circle at center, #1b233a 0%, #080a12 100%);
+      border: 2px solid #2a3550;
       border-radius: 12px;
-      padding: 12px 16px;
+      padding: 14px;
+      position: relative;
+      box-shadow: 0 0 25px rgba(0,0,0,0.8);
+      margin-bottom: 10px;
+      transition: transform 0.1s ease;
+    }
+
+    .shake {
+      animation: shakeAnim 0.3s cubic-bezier(.36,.07,.19,.97) both;
+    }
+    @keyframes shakeAnim {
+      10%, 90% { transform: translate3d(-3px, 0, 0); }
+      20%, 80% { transform: translate3d(5px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+      40%, 60% { transform: translate3d(6px, 0, 0); }
+    }
+
+    /* BARRAS DE STATUS */
+    .hud-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      margin-bottom: 8px;
     }
-    .hud-stat { display: flex; flex-direction: column; font-size: 0.8rem; }
-    .hud-val { font-family: var(--font-title); font-size: 1.25rem; font-weight: 700; color: var(--accent); }
-    .xp-bar-container {
+    .status-box { width: 48%; }
+    .entity-name {
+      font-family: var(--pixel-font);
+      font-size: 0.6rem;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .bar-outer {
       width: 100%;
-      max-width: 680px;
-      height: 8px;
-      background: #1c2333;
+      height: 12px;
+      background: #202738;
+      border: 1px solid #3b4866;
       border-radius: 4px;
-      margin-bottom: 16px;
       overflow: hidden;
     }
-    .xp-bar {
+    .bar-fill {
       height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, var(--accent), var(--success));
-      transition: width 0.4s ease;
+      transition: width 0.3s ease-out;
     }
+    #player-hp-bar { background: var(--player-hp); width: 100%; }
+    #boss-hp-bar { background: var(--boss-hp); width: 100%; }
 
-    /* Cartão Principal de Desafio */
-    .quest-card {
-      width: 100%;
-      max-width: 680px;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 18px;
-      position: relative;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    /* PALCO DOS PERSONAGENS */
+    .stage {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 14px;
+      min-height: 110px;
     }
-
-    .badge-sector {
-      display: inline-block;
-      padding: 4px 10px;
-      background: rgba(0, 242, 254, 0.1);
-      color: var(--accent);
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-      border: 1px solid var(--accent-glow);
-    }
-
-    .quest-question {
-      font-size: 0.95rem;
-      line-height: 1.5;
-      margin-bottom: 16px;
-      font-weight: 600;
-      color: #f8fafc;
-    }
-
-    .options-grid {
+    .avatar {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      align-items: center;
+    }
+    .sprite {
+      font-size: 3rem;
+      filter: drop-shadow(0 0 10px rgba(0,242,254,0.4));
+      transition: transform 0.2s ease;
+    }
+    .boss-sprite {
+      font-size: 3.5rem;
+      filter: drop-shadow(0 0 12px rgba(255,0,85,0.5));
+    }
+    .hit-flash {
+      filter: brightness(3) saturate(0) !important;
     }
 
-    .btn-option {
-      background: #1a202c;
-      border: 1px solid var(--border);
+    /* DIÁLOGO / DESAFIO */
+    .boss-dialogue {
+      background: rgba(18, 22, 34, 0.95);
+      border: 1px solid #3b4866;
       border-radius: 8px;
-      color: var(--text);
-      padding: 12px 14px;
-      font-family: var(--font-code);
-      font-size: 0.85rem;
+      padding: 10px;
+      font-size: 0.88rem;
       line-height: 1.4;
-      text-align: left;
-      cursor: pointer;
-      transition: all 0.15s ease;
+      min-height: 60px;
+      margin-bottom: 6px;
+    }
+
+    /* BOTÕES DE AÇÃO / GOLPES */
+    .deck-container {
+      width: 100%;
+      max-width: 600px;
       display: flex;
-      align-items: flex-start;
+      flex-direction: column;
       gap: 8px;
     }
-    .btn-option:hover {
+
+    .combat-action {
+      background: #161c2a;
+      border: 1px solid #2e3a54;
+      border-radius: 8px;
+      color: #e2e8f0;
+      padding: 12px 14px;
+      text-align: left;
+      font-family: var(--ui-font);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      -webkit-tap-highlight-color: transparent; /* Remove flash cinza ao tocar no iOS */
+    }
+    .combat-action:active {
+      transform: scale(0.97);
       background: #242c3d;
       border-color: var(--accent);
     }
-    .btn-option.selected {
-      border-color: var(--accent);
-      box-shadow: 0 0 10px var(--accent-glow);
-    }
-    .btn-option.correct {
-      background: rgba(0, 255, 136, 0.15) !important;
-      border-color: var(--success) !important;
-      color: var(--success) !important;
-    }
-    .btn-option.wrong {
-      background: rgba(255, 0, 85, 0.15) !important;
-      border-color: var(--danger) !important;
-      color: var(--danger) !important;
-    }
-    .btn-option.almost {
-      border-color: var(--warning) !important;
-      background: rgba(255, 183, 3, 0.1) !important;
-    }
-
-    /* Caixa de Explicação Neuro-Adaptativa */
-    .analysis-box {
-      margin-top: 14px;
-      padding: 14px;
-      border-radius: 8px;
-      background: #0f131a;
-      border-left: 4px solid var(--accent);
-      display: none;
-      animation: fadeIn 0.3s ease;
-    }
-    .analysis-box h4 {
-      font-family: var(--font-title);
-      font-size: 1.1rem;
-      margin-bottom: 6px;
-    }
-    .analysis-box p {
-      font-size: 0.8rem;
-      line-height: 1.45;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-    .analysis-box .trap-alert {
-      color: var(--warning);
-      font-weight: 600;
-    }
-
-    .action-controls {
-      display: flex;
-      gap: 8px;
-      margin-top: 16px;
-    }
-    .btn-action {
-      flex: 1;
-      padding: 12px;
-      background: var(--accent);
-      color: #0b0e14;
-      font-weight: 700;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-family: var(--font-title);
-      font-size: 1.1rem;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      transition: opacity 0.2s ease;
-    }
-    .btn-action:hover { opacity: 0.9; }
-
-    /* Painel de Fraquezas & Sincronização */
-    .drawer {
-      width: 100%;
-      max-width: 680px;
-      margin-top: 16px;
-      background: var(--card-bg);
-      border: 1px dashed var(--border);
-      border-radius: 10px;
-      padding: 12px 16px;
-    }
-    .drawer-title {
-      font-size: 0.85rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      display: flex;
-      justify-content: space-between;
-      cursor: pointer;
-    }
-    .weakness-list {
-      margin-top: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      max-height: 150px;
-      overflow-y: auto;
-    }
-    .weakness-item {
-      font-size: 0.75rem;
-      background: #1c2333;
-      padding: 6px 10px;
+    .action-icon {
+      font-family: var(--pixel-font);
+      font-size: 0.55rem;
+      background: #2a3550;
+      padding: 4px 6px;
       border-radius: 4px;
-      border-left: 3px solid var(--danger);
-      display: flex;
-      justify-content: space-between;
+      color: var(--accent);
+      flex-shrink: 0;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-5px); }
-      to { opacity: 1; transform: translateY(0); }
+    /* LOG DO COMBATE */
+    .combat-log {
+      width: 100%;
+      max-width: 600px;
+      margin-top: 10px;
+      background: #06070a;
+      border: 1px solid #1c2333;
+      border-radius: 6px;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      min-height: 55px;
+      max-height: 80px;
+      overflow-y: auto;
+      color: #7dd3fc;
     }
   </style>
 </head>
 <body>
 
-  <!-- HUD STATUS BAR -->
-  <div class="hud">
-    <div class="hud-stat">
-      <span>NÍVEL</span>
-      <span class="hud-val" id="player-level">LV. 1</span>
+  <div class="battle-scene" id="arena">
+    <div class="hud-bar">
+      <div class="status-box">
+        <div class="entity-name">
+          <span>AMANDA (VOCÊ)</span>
+          <span id="player-hp-txt">100/100</span>
+        </div>
+        <div class="bar-outer">
+          <div class="bar-fill" id="player-hp-bar"></div>
+        </div>
+      </div>
+      <div class="status-box">
+        <div class="entity-name">
+          <span id="boss-name">BOSS</span>
+          <span id="boss-hp-txt">100/100</span>
+        </div>
+        <div class="bar-outer">
+          <div class="bar-fill" id="boss-hp-bar"></div>
+        </div>
+      </div>
     </div>
-    <div class="hud-stat">
-      <span>XP ACUMULADO</span>
-      <span class="hud-val" id="player-xp">0 XP</span>
+
+    <div class="stage">
+      <div class="avatar">
+        <div class="sprite" id="player-sprite">🥋</div>
+        <span style="font-size:0.7rem; font-weight:700; color:var(--player-hp);">HERÓI</span>
+      </div>
+      <div style="font-family:var(--pixel-font); font-size:1rem; color:#ff0055;">VS</div>
+      <div class="avatar">
+        <div class="sprite boss-sprite" id="boss-sprite">👹</div>
+        <span style="font-size:0.7rem; font-weight:700; color:var(--boss-hp);">TITÃ</span>
+      </div>
     </div>
-    <div class="hud-stat">
-      <span>COMBO DOPAMINA</span>
-      <span class="hud-val" id="player-streak" style="color:var(--success);">0x</span>
+
+    <div class="boss-dialogue" id="boss-speech">
+      Conectando ao Códice...
     </div>
   </div>
 
-  <!-- BARRA DE PROGRESSO DINÂMICA -->
-  <div class="xp-bar-container">
-    <div class="xp-bar" id="xp-fill"></div>
-  </div>
+  <div class="deck-container" id="actions-deck"></div>
 
-  <!-- ARENA DA QUESTÃO -->
-  <div class="quest-card" id="card">
-    <div class="badge-sector" id="quest-module">MÓDULO</div>
-    <div class="quest-question" id="quest-title">Carregando desafio...</div>
-    <div class="options-grid" id="quest-options"></div>
-
-    <!-- ANÁLISE / NEURO-FEEDBACK -->
-    <div class="analysis-box" id="analysis">
-      <h4 id="analysis-title">DIAGNÓSTICO</h4>
-      <p id="analysis-text"></p>
-      <p class="trap-alert" id="analysis-trap"></p>
-    </div>
-
-    <div class="action-controls">
-      <button class="btn-action" id="btn-next" onclick="nextQuestion()">Próximo Desafio &rarr;</button>
-    </div>
-  </div>
-
-  <!-- RADAR DE VULNERABILIDADES (TDAH Tracker) -->
-  <div class="drawer">
-    <div class="drawer-title" onclick="toggleWeaknesses()">
-      <span>🚨 Radar de Fraquezas & Armadilhas</span>
-      <span id="weakness-count">0 Alertas</span>
-    </div>
-    <div class="weakness-list" id="weakness-container"></div>
+  <div class="combat-log" id="combat-log">
+    > Sessão iniciada. Toque em uma habilidade para contra-atacar!
   </div>
 
   <script>
     /* =========================================================================
-       BASE DE CONHECIMENTO // AS SUAS PROVAS REAIS (CONTEÚDO COMPLETO)
+       CREDENCIAS DO SUPABASE (CONFIGURADAS)
        ========================================================================= */
-    const DATABASE = [
+    const SUPABASE_URL = "https://aazdwdbmmvokborisuxd.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_TVwbt5bsVssBt7h4oSAe6Q_JzaJ1p4X";
+    const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    /* =========================================================================
+       SINTETIZADOR DE ÁUDIO RETRÔ EMBUTIDO (SUBSTITUI VIBRAÇÃO NO IPHONE)
+       ========================================================================= */
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function playSfx(type) {
+      if (!audioCtx) audioCtx = new AudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'hit') {
+        // Som de impacto crítico estridente
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(450, now);
+        osc.frequency.exponentialRampToValueAtTime(120, now + 0.15);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      } else if (type === 'hurt') {
+        // Som de dano sofrido / erro
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.linearRampToValueAtTime(40, now + 0.25);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } else if (type === 'win') {
+        // Fanfarra de vitória curta
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.setValueAtTime(400, now + 0.1);
+        osc.frequency.setValueAtTime(600, now + 0.2);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      }
+    }
+
+    /* BASE DE BOSSES DAS PROVAS */
+    const BOSSES = [
       {
-        id: "Q45118",
-        sector: "Metodologia & Texto Académico",
-        question: "Considerando a importância de um bom desenvolvimento linguístico enquanto prática científica, podemos identificar como características do género académico ensaio (Carmo, 2021):",
-        options: [
-          "Hibridização, temporalidade e independência.",
-          "Restrição, dependência e reprodução.",
-          "Dependência, restrição e independência.",
-          "Reprodução, temporalidade e restrição.",
-          "Hibridização, temporalidade e restrição."
-        ],
-        correct: 0,
-        distractor: 4,
-        rationale: "O ensaio alia liberdade reflexiva ao rigor científico (hibridização), situa-se no presente histórico (temporalidade) e confere autonomia crítica ao autor sem mera reprodução (independência).",
-        trap: "Armadilha da Restrição: As alternativas com 'restrição' e 'dependência' contradizem a natureza autoral do ensaio."
+        name: "DEVOIR CARTESIANO",
+        sprite: "🧊",
+        challenge: "René Descartes duvida das sensações para fundamentar a ciência. Qual ação epistêmica quebra a ilusão?",
+        actions: [
+          { text: "Ativar Dúvida Metódica: Rejeitar antigas opiniões frágeis até achar base sólida.", type: "crit", info: "Acerto crítico! O método cartesiano reconstrói o saber pelo Cogito." },
+          { text: "Fundamentar tudo nos sentidos humanos com precisão.", type: "almost", info: "Quase acertou! Mas Descartes rejeita os sentidos por serem falíveis." },
+          { text: "Concluir que a verdade científica é impossível de encontrar.", type: "fail", info: "Erro! Descartes busca e encontra uma verdade indubitável." }
+        ]
       },
       {
-        id: "Q51496",
-        sector: "Interpretação Textual & Inclusão",
-        question: "Segundo o texto 'Inclusão Digital, Programa de Índio Conectado à Web', quais são algumas das transformações vivenciadas pelas aldeias na atualidade?",
-        options: [
-          "Telhados de amianto, fogueiras.",
-          "Residências de taipa, índios surfistas.",
-          "Índios na escola, residências de taipa.",
-          "Urbanismo e inclusão digital.",
-          "Inclusão digital e fogueiras."
-        ],
-        correct: 3,
-        distractor: 1,
-        rationale: "O texto expressa com clareza: 'Não foi apenas o urbanismo... Hoje a inclusão digital também é realidade'.",
-        trap: "Armadilha do Ponto de Partida: 'Taipa' e 'fogueiras' representavam o passado que foi substituído, não a transformação em si."
+        name: "TITÃ DO PODER CAPILAR",
+        sprite: "👁️",
+        challenge: "Michel Foucault afirma que o poder não é apenas repressivo. Como ele age na sociedade moderna?",
+        actions: [
+          { text: "Rede Produtiva: Disseminar saber, produzir discursos e prazeres.", type: "crit", info: "Impacto devastador! A microfísica do poder é positiva e geradora de saber." },
+          { text: "Força de Restrição: Agir apenas proibindo e punindo o cidadão.", type: "almost", info: "Quase! Essa é a visão tradicional jurídica que Foucault justamente supera." },
+          { text: "Instrumento exclusivo de criação de conceitos filosóficos.", type: "fail", info: "Erro! Criar conceitos é a definição de Deleuze para a filosofia." }
+        ]
       },
       {
-        id: "Q46856",
-        sector: "Filosofia // Epistemologia",
-        question: "Com base no texto de Marilena Chaui sobre o período socrático e o autoconhecimento, assinale a assertiva correta:",
-        options: [
-          "Na filosofia platónica, a doxa é baseada na racionalidade e busca entender o ser humano e o mundo.",
-          "Platão chamava a verdade de doxa e a comparava com a episteme, que ele considerava inferior.",
-          "A ignorância, base da filosofia, foi vista por Platão como a incapacidade total de buscar conhecimento.",
-          "Platão e Sócrates iniciam a filosofia com a consciência da ignorância. O 'conheça-te a ti mesmo' é o ponto de partida para a teoria do conhecimento.",
-          "As teorias de Platão são diálogos com Sócrates, pois ele precisava das ideias de outros para desenvolver suas próprias teorias."
-        ],
-        correct: 3,
-        distractor: 2,
-        rationale: "O reconhecimento da própria ignorância é o motor maiêutico e o autoconhecimento é a premissa de toda a verdade.",
-        trap: "Inversão Conceitual: Doxa é opinião sensorial; Episteme é ciência/verdade. Nunca confunda as duas!"
+        name: "AUTÔMATO DE FICHEIROS C",
+        sprite: "💾",
+        challenge: "O log da fintech expande sem parar e precisa de leitura/escrita sem apagar dados. Qual modo do fopen() você conjura?",
+        actions: [
+          { text: "Conjurar Modo 'r+' (Atualização sem truncar o ficheiro).", type: "crit", info: "Dano Crítico! 'r+' permite leitura/escrita mantendo o conteúdo preservado." },
+          { text: "Conjurar Modo 'w+' (Leitura e escrita de alto nível).", type: "almost", info: "Armadilha fatal! 'w+' apaga todo o ficheiro no segundo em que abre!" },
+          { text: "Conjurar Modo 'a' para ler e escrever no final.", type: "fail", info: "Erro! 'a' isolado não permite leitura (exigiria 'a+')." }
+        ]
       },
       {
-        id: "Q46854",
-        sector: "Filosofia // Mito e Razão",
-        question: "Com base nos conhecimentos sobre a relação entre mito e filosofia na Grécia, é correto afirmar que:",
-        options: [
-          "O mito é uma filosofia e, por meio de suas narrativas, obtiveram-se respostas das civilizações pesquisadas.",
-          "O mito não mente e a razão não se engana, portanto a filosofia depende do mito para expressar ideias.",
-          "A filosofia clássica surgiu no antigo Oriente, alcançando pensamento racional apenas com os gregos.",
-          "Com o surgimento da filosofia houve uma ruptura radical com as narrativas míticas.",
-          "A filosofia passou a afirmar que a verdade é racional, porém não fez uma ruptura radical com a forma mítica de narrar os fatos."
-        ],
-        correct: 4,
-        distractor: 3,
-        rationale: "Historiografia moderna (Vernant): Houve continuidade estrutural; Platão e Parménides utilizaram mitos para expressar o logos.",
-        trap: "A Ilusão do 'Milagre Grego': A tese de 'rutura radical' é um distrator histórico superado."
+        name: "SPECTRO RECURSIVO",
+        sprite: "🌀",
+        challenge: "A chamada recursiva está prestes a transbordar a memória! Qual mecanismo impede o Stack Overflow?",
+        actions: [
+          { text: "Condição-Base de Parada: Encerrar as auto-invocações no caso trivial.", type: "crit", info: "Estouro evitado! Sem caso-base a pilha cresce infinitamente até travar." },
+          { text: "Substituição irrestrita de todos os laços de repetição por ponteiros.", type: "almost", info: "Quase! Recursão substitui loops, mas o que impede o estouro é a paragem." },
+          { text: "Duplicação contínua da pilha de execução da CPU.", type: "fail", info: "Erro! Duplicar a pilha acelera o esgotamento da memória." }
+        ]
       },
       {
-        id: "Q51224",
-        sector: "Filosofia Moderna // Descartes",
-        question: "Considerando as Meditações de René Descartes, o que é correto afirmar sobre a teoria do conhecimento cartesiana?",
-        options: [
-          "Descartes busca fundamentar nos sentidos uma base segura para as ciências.",
-          "Descartes considera impossível encontrar algo de firme e certo nas ciências.",
-          "Ao investigar uma base firme e indestrutível, Descartes rejeita suas antigas opiniões e utiliza o método da dúvida até encontrar algo firme e certo.",
-          "Descartes não utiliza um método ou estratégia para estabelecer certezas.",
-          "Descartes necessitou de solidão para encontrar entre as opiniões antigas o fundamento verdadeiro."
-        ],
-        correct: 2,
-        distractor: 0,
-        rationale: "A dúvida metódica e hiperbólica desfaz as certezas frágeis para encontrar uma rocha inabalável (o Cogito).",
-        trap: "Incompatibilidade Racionalista: Dizer que Descartes fundamenta nos sentidos é oposto ao seu racionalismo estrito."
-      },
-      {
-        id: "Q46880",
-        sector: "Filosofia Contemporânea // Crítica",
-        question: "Observe os conceitos de niilismo, poder, saber e controle no pensamento contemporâneo e assinale a alternativa correta:",
-        options: [
-          "Nietzsche usou o termo 'niilismo' para expressar a decadência dos valores ocidentais, vendo a Europa de sua época como 'o nada'.",
-          "Para Foucault, o filósofo é um artesão que inventa e cria conceitos; a filosofia é um instrumento para isso.",
-          "Spinoza critica o platonismo, afirmando que a decadência ocidental veio das ideias cristãs.",
-          "Deleuze conceituou a sociedade disciplinar, descrevendo a vigilância institucional.",
-          "Deleuze disse: 'Não me pergunte quem eu sou e não me peça para permanecer o mesmo...'."
-        ],
-        correct: 0,
-        distractor: 1,
-        rationale: "O diagnóstico de Nietzsche sobre o enfraquecimento moral do Ocidente é o niilismo passivo.",
-        trap: "Troca Cruzada de Autoria: 'Criar conceitos' é Deleuze; 'Sociedade disciplinar' e 'Não me pergunte quem sou' são de Foucault."
-      },
-      {
-        id: "Q46895",
-        sector: "Filosofia Política // Poder",
-        question: "O poder visto não apenas como repressão negativa, mas como rede produtiva que dissemina saber, prazer e discursos pertence a:",
-        options: [
-          "Gilles Deleuze e Guattari.",
-          "Séneca.",
-          "Michel Foucault.",
-          "Friedrich Nietzsche.",
-          "Epicteto."
-        ],
-        correct: 2,
-        distractor: 0,
-        rationale: "A 'Microfísica do Poder' de Foucault define o poder capilar e produtivo nas instituições.",
-        trap: "Conexão Teórica Próxima: Embora Deleuze beba em Foucault, a tese formal da positividade do poder é foucaultiana."
-      },
-      {
-        id: "Q1161946",
-        sector: "Linguagem C // Manipulação de Ficheiros",
-        question: "Para um sistema de auditoria que lê e escreve registros continuamente sem apagar dados pré-existentes, qual modo do fopen() deve ser usado?",
-        options: [
-          "'a' — pois permite ler e escrever no final do arquivo.",
-          "'w' — pois permite sobrescrever o arquivo com segurança.",
-          "'r' — pois permite escrever no início do arquivo sem perder dados.",
-          "'w+' — pois garante leitura e preservação total dos dados.",
-          "'r+' — pois permite leitura e escrita sem excluir o conteúdo já existente."
-        ],
-        correct: 4,
-        distractor: 3,
-        rationale: "'r+' abre para leitura e escrita preservando os bytes intactos. 'w+' trunca o ficheiro para 0 bytes!",
-        trap: "Armadilha Fatal do 'w+': Qualquer modo com 'w' limpa o arquivo no momento da abertura."
-      },
-      {
-        id: "Q1158907",
-        sector: "Programação C // Arquitetura & Otimização",
-        question: "Em sistemas IoT com restrição de memória, o impacto conjunto de modularização, ponteiros e recursão promove:",
-        options: [
-          "O uso de passagem por referência elimina a necessidade de modularização.",
-          "A utilização de recursão em embarcados impede a reutilização de código.",
-          "A combinação de modularização, ponteiros e recursão promove código reutilizável e otimizado, facilitando a manutenção e a expansão.",
-          "O uso de ponteiros compromete a escalabilidade tornando tudo memória estática.",
-          "A modularização e a passagem por referência aumentam o acoplamento dificultando novos hardwares."
-        ],
-        correct: 2,
-        distractor: 0,
-        rationale: "Passagem de ponteiros evita cópias pesadas na stack; modularização isola responsabilidades.",
-        trap: "Negação Absurda: Ponteiros jamais dispensam modularização."
-      },
-      {
-        id: "Q1158905",
-        sector: "Algoritmos // Recursividade",
-        question: "Em funções recursivas (como fatorial ou percursos em árvores), qual é a finalidade precípua da condição-base?",
-        options: [
-          "Encerrar a repetição infinita de chamadas, evitando estouro de memória (stack overflow).",
-          "Acelerar o processamento reduzindo chamadas simultâneas.",
-          "Substituir o uso de laços como for e while em qualquer contexto.",
-          "Garantir que a função nunca termine, mantendo execução contínua.",
-          "Duplicar a pilha de chamadas para otimizar o desempenho da função."
-        ],
-        correct: 0,
-        distractor: 2,
-        rationale: "Sem caso-base, os frames de ativação empilham-se até o estouro da stack.",
-        trap: "Generalização Indevida: A recursão substitui laços em certas estruturas, mas o caso-base existe para parar."
-      },
-      {
-        id: "Q1159486",
-        sector: "Lógica de Programação // Controlo de Fluxo",
-        question: "Sobre o papel e utilidade das estruturas condicionais (if, else if, switch):",
-        options: [
-          "Possibilitam que programas tomem decisões automáticas, executando blocos específicos conforme as condições avaliadas, promovendo eficiência e segurança.",
-          "São recomendadas apenas para programas simples, sem vantagens em sistemas complexos.",
-          "A função do switch é idêntica à do if, devendo ser usada apenas com duas condições.",
-          "Permitem escolher caminhos apenas quando todas as condições forem falsas.",
-          "O uso de operadores lógicos é dispensável, pois decisões usam apenas valores literais constantes."
-        ],
-        correct: 0,
-        distractor: 3,
-        rationale: "Condicionais ramificam a execução determinística baseada em álgebra booleana.",
-        trap: "Inversão de Lógica: A opção D diz que o bloco roda quando 'todas são falsas' (o que seria apenas o else)."
-      },
-      {
-        id: "Q1161948",
-        sector: "Linguagem C // Ficheiros Binários",
-        question: "Qual a principal vantagem técnica de migrar registros estruturados de arquivos de texto para arquivos binários (fwrite/fread)?",
-        options: [
-          "Os arquivos binários armazenam o conteúdo exatamente como está na memória, facilitando a escrita e a leitura de estruturas complexas.",
-          "A exigência de ponteiros FILE que simplifica o fluxo sequencial.",
-          "A migração gera um novo desafio, pois arquivos binários apresentam problemas de compatibilidade e endianness.",
-          "O benefício é a facilidade na depuração de texto.",
-          "O ganho de eficiência é limitado pelo bloqueio de editores de texto."
-        ],
-        correct: 0,
-        distractor: 2,
-        rationale: "Fwrite grava o bloco contíguo de memória da RAM diretamente para o disco, eliminando conversões numéricas pesadas.",
-        trap: "Distrator de Alta Verdade Técnica: A opção C é verdadeira quanto aos desafios, mas a pergunta pede a VANTAGEM TÉCNICA."
-      },
-      {
-        id: "Q1151801",
-        sector: "Estruturas de Dados // Filas",
-        question: "Em relação à estrutura de dados FILA (Queue), assinale a afirmativa correta:",
-        options: [
-          "Em uma fila também podemos inserir elementos no meio.",
-          "Com relação à política de acesso, uma fila é do tipo LIFO.",
-          "Em uma fila a operação enfileirar só pode ser feita no fim de uma lista encadeada.",
-          "Na fila o acesso de entrada de elementos é feito em um extremo enquanto a saída é feita em outro.",
-          "Como a retirada é feita no fim, a implementação exige exclusivamente vetor."
-        ],
-        correct: 3,
-        distractor: 2,
-        rationale: "Fila é estritamente FIFO: Inserção na retaguarda (tail) e remoção na frente (head).",
-        trap: "Confusão FIFO vs LIFO: LIFO pertence às Pilhas (Stack)."
-      },
-      {
-        id: "Q1151794",
-        sector: "Sistemas Operativos // Linux",
-        question: "Para interromper um processo via 'kill <PID>', qual utilitário deve ser executado no terminal para descobrir o PID?",
-        options: [
-          "set",
-          "du",
-          "ps",
-          "ls",
-          "pwd"
-        ],
-        correct: 2,
-        distractor: 0,
-        rationale: "'ps' (process status) exibe processos e seus respectivos PIDs. 'set' manipula variáveis shell.",
-        trap: "Comandos Comuns de Shell: 'du' é disco, 'ls' arquivos e 'pwd' caminho atual."
-      },
-      {
-        id: "Q1151795",
-        sector: "Arquitetura de Computadores // CPU",
-        question: "Conceitualmente, de acordo com o modelo de Von Neumann, a CPU é constituída por:",
-        options: [
-          "Registradores / Barramentos / Unidade de Controle.",
-          "Registradores / Memória Cache / Coprocessador Aritmético.",
-          "Buffers / Memória Cache / Coprocessador Aritmético.",
-          "Buffers / Unidade de Controle / Unidade Lógica e Aritmética.",
-          "Registradores / Unidade de Controle / Unidade Lógica e Aritmética."
-        ],
-        correct: 4,
-        distractor: 0,
-        rationale: "O núcleo do processador é a tríade: UC (busca/decodificação), ULA (cálculo) e Registadores (armazenamento imediato).",
-        trap: "Inclusão de Barramentos: Barramentos interligam os subsistemas, mas não fazem parte do trio funcional básico interno."
-      },
-      {
-        id: "Q1151797",
-        sector: "Paradigmas // Programação Orientada a Objetos",
-        question: "Sobre o conceito primordial de Classes na POO, assinale a opção correta:",
-        options: [
-          "Classes consistem de descrições de características e ações comuns a um grupo de objetos.",
-          "Todo objeto é uma instância de um método.",
-          "Classes são abstrações exclusivas do mundo imaginário.",
-          "Objetos são criados a partir do método create.",
-          "Objetos executam suas ações aleatoriamente através de threads."
-        ],
-        correct: 0,
-        distractor: 1,
-        rationale: "A classe é o molde (blueprint) definindo atributos (estado) e métodos (comportamento).",
-        trap: "Troca Hierárquica: Objeto é instância de Classe, nunca de método."
-      },
-      {
-        id: "Q1151793",
-        sector: "Algoritmos // Laços de Repetição",
-        question: "Qual o resultado do algoritmo: 'para x de 10 ate 1 passo -1 faca escreval(x)'?",
-        options: [
-          "Escreve os números pares entre 1 até 10 em ordem decrescente.",
-          "Escreve os números de 1 até 10 em ordem decrescente.",
-          "Escreve os números ímpares de 1 até 10 em ordem decrescente.",
-          "Escreve os números de 1 até 10 em ordem crescente.",
-          "Escreve um número x digitado dez vezes."
-        ],
-        correct: 1,
-        distractor: 0,
-        rationale: "Com passo -1 iniciando em 10 até 1, todos os números (pares e ímpares) são impressos decrescentemente.",
-        trap: "A Ilusão da Paridade: Por começar em 10, o cérebro tende a achar que é só par, mas o decremento unitário pega todos."
+        name: "GUARDIÃO DE VON NEUMANN",
+        sprite: "⚡",
+        challenge: "O processador exige seus três componentes essenciais de cálculo e controlo para operar. Quem você invoca?",
+        actions: [
+          { text: "Registradores + Unidade de Controle + ULA (Unidade Lógica e Aritmética).", type: "crit", info: "Núcleo ativado! Essa é a tríade fundamental de funcionamento da CPU." },
+          { text: "Registradores + Barramentos + Memória Cache.", type: "almost", info: "Quase! Barramentos comunicam os módulos, mas não calculam." },
+          { text: "Buffers de I/O + Memória Virtual + Placa Mãe.", type: "fail", info: "Incorreto! Componentes externos não integram o núcleo da CPU." }
+        ]
       }
     ];
 
-    /* =========================================================================
-       ESTADO DO JOGADOR & RECURSOS TDAH (FEEDBACK HÁPTICO / MEMÓRIA LOCAL)
-       ========================================================================= */
-    let playerState = {
-      level: 1,
-      xp: 0,
-      streak: 0,
-      weaknesses: {} // Armazena ID da questão e vezes que errou
-    };
+    let currentBossIdx = 0;
+    let playerHP = 100;
+    let bossHP = 100;
 
-    let currentIdx = 0;
-    let selectedOption = null;
-    let answered = false;
-
-    // Inicialização LocalStorage
-    function loadState() {
-      const saved = localStorage.getItem('oraculo_save_state');
-      if (saved) {
-        playerState = JSON.parse(saved);
-        updateHUD();
-        renderWeaknesses();
-      }
-    }
-
-    function saveState() {
-      localStorage.setItem('oraculo_save_state', JSON.stringify(playerState));
-      // Disparo em segundo plano para o Supabase (se configurado)
-      syncToSupabase();
-    }
-
-    function triggerHaptic(type) {
-      if ('vibrate' in navigator) {
-        if (type === 'success') navigator.vibrate([40, 60, 40]);
-        if (type === 'fail') navigator.vibrate([100, 50, 100]);
-      }
-    }
-
-    function updateHUD() {
-      document.getElementById('player-level').innerText = `LV. ${playerState.level}`;
-      document.getElementById('player-xp').innerText = `${playerState.xp} XP`;
-      document.getElementById('player-streak').innerText = `${playerState.streak}x`;
+    function initBattle() {
+      const b = BOSSES[currentBossIdx];
+      bossHP = 100;
+      updateBars();
       
-      const xpNeeded = playerState.level * 150;
-      const progress = Math.min(100, (playerState.xp % xpNeeded) / xpNeeded * 100);
-      document.getElementById('xp-fill').style.width = `${progress}%`;
-    }
-
-    function renderQuestion() {
-      answered = false;
-      const q = DATABASE[currentIdx];
-      document.getElementById('quest-module').innerText = q.sector;
-      document.getElementById('quest-title').innerText = q.question;
+      document.getElementById('boss-name').innerText = b.name;
+      document.getElementById('boss-sprite').innerText = b.sprite;
+      document.getElementById('boss-speech').innerText = b.challenge;
       
-      const optContainer = document.getElementById('quest-options');
-      optContainer.innerHTML = '';
-      
-      document.getElementById('analysis').style.display = 'none';
+      const deck = document.getElementById('actions-deck');
+      deck.innerHTML = '';
 
-      q.options.forEach((opt, idx) => {
+      const shuffledActions = [...b.actions].sort(() => Math.random() - 0.5);
+
+      shuffledActions.forEach((act, idx) => {
         const btn = document.createElement('button');
-        btn.className = 'btn-option';
-        btn.innerHTML = `<strong>[${String.fromCharCode(65 + idx)}]</strong> <span>${opt}</span>`;
-        btn.onclick = () => selectOption(idx);
-        optContainer.appendChild(btn);
+        btn.className = 'combat-action';
+        btn.innerHTML = `<span class="action-icon">GOLPE ${idx+1}</span> <span>${act.text}</span>`;
+        btn.onclick = () => executeTurn(act);
+        deck.appendChild(btn);
       });
     }
 
-    function selectOption(idx) {
-      if (answered) return;
-      answered = true;
-      selectedOption = idx;
-      
-      const q = DATABASE[currentIdx];
-      const buttons = document.querySelectorAll('.btn-option');
+    function executeTurn(action) {
+      const arena = document.getElementById('arena');
+      const bossSprite = document.getElementById('boss-sprite');
+      const playerSprite = document.getElementById('player-sprite');
 
-      // Feedback visual das alternativas
-      buttons.forEach((b, i) => {
-        if (i === q.correct) b.classList.add('correct');
-        if (i === idx && idx !== q.correct) b.classList.add('wrong');
-        if (i === q.distractor) b.classList.add('almost');
-      });
-
-      // Avaliação de Sucesso / Erro
-      if (idx === q.correct) {
-        triggerHaptic('success');
-        playerState.xp += 30 + (playerState.streak * 5);
-        playerState.streak += 1;
-        if (playerState.xp >= playerState.level * 150) {
-          playerState.level += 1;
-        }
+      if (action.type === 'crit') {
+        bossHP = Math.max(0, bossHP - 55);
+        bossSprite.classList.add('hit-flash');
+        playSfx('hit');
+        logCombat(`💥 GOLPE CRÍTICO! ${action.info}`);
+        setTimeout(() => bossSprite.classList.remove('hit-flash'), 250);
+      } else if (action.type === 'almost') {
+        bossHP = Math.max(0, bossHP - 15);
+        playerHP = Math.max(0, playerHP - 20);
+        arena.classList.add('shake');
+        playSfx('hurt');
+        logCombat(`⚠️ ARMADILHA DO DISTRATOR: ${action.info} Você sofreu 20 de dano!`);
+        setTimeout(() => arena.classList.remove('shake'), 300);
       } else {
-        triggerHaptic('fail');
-        playerState.streak = 0;
-        playerState.weaknesses[q.id] = (playerState.weaknesses[q.id] || 0) + 1;
+        playerHP = Math.max(0, playerHP - 35);
+        arena.classList.add('shake');
+        playerSprite.classList.add('hit-flash');
+        playSfx('hurt');
+        logCombat(`☠️ FALHA CRÍTICA! ${action.info} O Guardião contra-atacou (-35 HP)!`);
+        setTimeout(() => {
+          arena.classList.remove('shake');
+          playerSprite.classList.remove('hit-flash');
+        }, 300);
       }
 
-      saveState();
-      updateHUD();
-      renderWeaknesses();
-      showAnalysis(idx === q.correct);
+      updateBars();
+
+      if (bossHP <= 0) {
+        playSfx('win');
+        logCombat(`🏆 VITÓRIA! Você dominou o conceito de ${BOSSES[currentBossIdx].name}!`);
+        saveProgressToSupabase(BOSSES[currentBossIdx].name, "VITÓRIA");
+        setTimeout(() => {
+          currentBossIdx = (currentBossIdx + 1) % BOSSES.length;
+          playerHP = Math.min(100, playerHP + 40);
+          initBattle();
+        }, 1200);
+      } else if (playerHP <= 0) {
+        logCombat(`💀 HP ESGOTADO! Reorganizando estratégia...`);
+        playerHP = 100;
+        setTimeout(initBattle, 1500);
+      }
     }
 
-    function showAnalysis(isCorrect) {
-      const q = DATABASE[currentIdx];
-      const box = document.getElementById('analysis');
-      const title = document.getElementById('analysis-title');
-      const text = document.getElementById('analysis-text');
-      const trap = document.getElementById('analysis-trap');
-
-      box.style.display = 'block';
-      title.innerText = isCorrect ? "🎯 NEURO-CONEXÃO CONFIRMADA!" : "⚠️ FALHA REGISTRADA NO CÓDICE";
-      title.style.color = isCorrect ? "var(--success)" : "var(--danger)";
-      text.innerText = q.rationale;
-      trap.innerText = `[ALERTA DE ARMADILHA]: ${q.trap}`;
+    function updateBars() {
+      document.getElementById('player-hp-bar').style.width = playerHP + '%';
+      document.getElementById('boss-hp-bar').style.width = bossHP + '%';
+      document.getElementById('player-hp-txt').innerText = `${playerHP}/100`;
+      document.getElementById('boss-hp-txt').innerText = `${bossHP}/100`;
     }
 
-    function nextQuestion() {
-      currentIdx = (currentIdx + 1) % DATABASE.length;
-      renderQuestion();
+    function logCombat(msg) {
+      const log = document.getElementById('combat-log');
+      log.innerHTML = `> ${msg}<br>` + log.innerHTML;
     }
 
-    function renderWeaknesses() {
-      const cont = document.getElementById('weakness-container');
-      cont.innerHTML = '';
-      const keys = Object.keys(playerState.weaknesses);
-      document.getElementById('weakness-count').innerText = `${keys.length} Tópicos Críticos`;
-
-      keys.forEach(k => {
-        const item = document.createElement('div');
-        item.className = 'weakness-item';
-        const q = DATABASE.find(x => x.id === k);
-        item.innerHTML = `<span><strong>${k}:</strong> ${q ? q.sector : 'Tópico'}</span> <span>${playerState.weaknesses[k]}x erros</span>`;
-        cont.appendChild(item);
-      });
-    }
-
-    function toggleWeaknesses() {
-      const c = document.getElementById('weakness-container');
-      c.style.display = c.style.display === 'none' ? 'flex' : 'none';
-    }
-
-    /* =========================================================================
-       CONEXÃO OPCIONAL // SUPABASE CLOUD SYNC
-       ========================================================================= */
-    const SUPABASE_URL = "https://aazdwdbmmvokborisuxd.supabase.co"; // Substituir pelas suas chaves
-    const SUPABASE_KEY = "sb_publishable_TVwbt5bsVssBt7h4oSAe6Q_JzaJ1p4X";
-    let sbClient = null;
-
-    if (SUPABASE_URL !== "https://SEU-PROJETO.supabase.co") {
-      sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    }
-
-    async function syncToSupabase() {
-      if (!sbClient) return;
+    async function saveProgressToSupabase(bossName, status) {
       try {
         await sbClient.from('oraculo_progress').upsert({
           user_id: 'amanda_anshiran',
-          level: playerState.level,
-          xp: playerState.xp,
-          streak: playerState.streak,
-          weaknesses: playerState.weaknesses,
+          level: currentBossIdx + 1,
+          xp: (currentBossIdx + 1) * 100,
+          streak: 1,
+          weaknesses: { last_boss: bossName, result: status },
           updated_at: new Date().toISOString()
         });
-      } catch (err) {
-        console.warn("Sync Supabase em espera:", err.message);
+      } catch (e) {
+        console.log("Supabase save:", e);
       }
     }
 
-    // Inicialização
-    loadState();
-    renderQuestion();
+    initBattle();
   </script>
 </body>
 </html>
