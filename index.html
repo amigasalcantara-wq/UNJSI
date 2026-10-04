@@ -5,20 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>ORÁCULO // PROTOCOLO MATRIX</title>
+  <title>ORÁCULO // PROTOCOLO KERNEL</title>
+  
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
   <style>
     :root {
-      --bg: #05070a;
-      --lane-border: #142036;
+      --bg: #03070d;
+      --term-bg: #060e1a;
       --cyan: #00f2fe;
-      --pink: #ff0055;
-      --yellow: #facc15;
+      --cyan-glow: rgba(0, 242, 254, 0.4);
+      --red: #ff0055;
+      --red-glow: rgba(255, 0, 85, 0.4);
+      --amber: #f59e0b;
       --green: #00ff88;
-      --text: #e2e8f0;
-      --font-retro: 'Press Start 2P', monospace;
-      --font-ui: 'Rajdhani', sans-serif;
+      --text: #cbd5e1;
+      --text-dim: #475569;
+      --border: #1e293b;
+      --font-mono: 'Share Tech Mono', monospace;
+      --font-code: 'Fira Code', monospace;
     }
 
     * {
@@ -31,460 +37,514 @@
     }
 
     body {
-      background: var(--bg);
+      background-color: var(--bg);
       color: var(--text);
-      font-family: var(--font-ui);
+      font-family: var(--font-code);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 8px;
-      padding-top: max(8px, env(safe-area-inset-top));
-      padding-bottom: max(12px, env(safe-area-inset-bottom));
-      overflow: hidden;
+      padding: 10px;
+      padding-top: max(10px, env(safe-area-inset-top));
+      padding-bottom: max(14px, env(safe-area-inset-bottom));
+      overflow-x: hidden;
     }
 
-    /* HUD SUPERIOR */
-    .hud {
+    /* CRT SCANLINE OVERLAY */
+    body::before {
+      content: " ";
+      position: fixed;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      background-size: 100% 2px, 3px 100%;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* TELEMETRIA SUPERIOR */
+    .telemetry-bar {
       width: 100%;
-      max-width: 480px;
+      max-width: 620px;
+      background: #0a1120;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--cyan);
+      border-radius: 6px;
+      padding: 8px 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #0d121f;
-      border: 2px solid #1c2740;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      margin-bottom: 8px;
+    }
+    .tel-val { color: var(--cyan); font-weight: 700; }
+
+    /* ARENA PRINCIPAL DO TERMINAL */
+    .kernel-frame {
+      width: 100%;
+      max-width: 620px;
+      background: var(--term-bg);
+      border: 1px solid #1c2b42;
       border-radius: 8px;
-      padding: 8px 12px;
-      font-family: var(--font-retro);
-      font-size: 0.65rem;
+      padding: 14px;
+      position: relative;
+      box-shadow: 0 0 30px rgba(0, 242, 254, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* BARRA DE BUFFER OVERFLOW (TIMER TDAH) */
+    .overflow-container {
+      width: 100%;
+    }
+    .overflow-label {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--amber);
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .overflow-track {
+      width: 100%;
+      height: 8px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .overflow-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--green), var(--amber), var(--red));
+      transition: width 0.1s linear;
+    }
+
+    /* LOG DO INCIDENTE / DUMP */
+    .incident-dump {
+      background: #03070d;
+      border: 1px solid #16243b;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: var(--font-code);
+      font-size: 0.82rem;
+      line-height: 1.45;
+      position: relative;
+    }
+    .incident-header {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--red);
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dashed #1e293b;
+      padding-bottom: 4px;
+    }
+    .incident-text {
+      color: #f1f5f9;
+      font-weight: 600;
       margin-bottom: 6px;
     }
-    .hud-val { color: var(--cyan); }
-    .combo-glow { color: var(--yellow); text-shadow: 0 0 8px rgba(250, 204, 21, 0.6); }
+    .incident-meta {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
 
-    /* ARENA DE LANES EM TEMPO REAL */
-    .matrix-arena {
-      width: 100%;
-      max-width: 480px;
-      height: 380px;
-      background: radial-gradient(ellipse at bottom, #0f172a 0%, #030508 100%);
-      border: 2px solid #202d4a;
-      border-radius: 10px;
-      position: relative;
+    /* DECK DE INJEÇÃO DE INSTRUÇÕES (PAYLOADS) */
+    .payloads-deck {
       display: flex;
-      overflow: hidden;
-      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      flex-direction: column;
+      gap: 8px;
     }
-
-    .lane {
-      flex: 1;
-      height: 100%;
-      border-right: 1px dashed var(--lane-border);
-      position: relative;
-      cursor: pointer;
-      display: flex;
-      justify-content: center;
-    }
-    .lane:last-child { border-right: none; }
-    .lane.active-lane {
-      background: rgba(0, 242, 254, 0.04);
-    }
-
-    /* LINHA DE DEFESA (BASE) */
-    .defense-line {
-      position: absolute;
-      bottom: 45px;
-      left: 0; right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
-      box-shadow: 0 0 10px var(--cyan);
-    }
-
-    .player-node {
-      position: absolute;
-      bottom: 8px;
-      font-size: 1.8rem;
-      filter: drop-shadow(0 0 8px var(--cyan));
-      transition: left 0.15s ease-out;
-    }
-
-    /* INIMIGOS QUE DESCEM */
-    .enemy {
-      position: absolute;
-      width: 90%;
-      background: #141b2b;
-      border: 1px solid var(--pink);
+    .btn-payload {
+      background: #0b1424;
+      border: 1px solid #1e2d47;
       border-radius: 6px;
-      padding: 6px 4px;
-      text-align: center;
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: #fff;
-      box-shadow: 0 0 12px rgba(255, 0, 85, 0.4);
-      transform: translateY(0);
-      pointer-events: none;
-    }
-    .enemy-type {
-      font-family: var(--font-retro);
-      font-size: 0.5rem;
-      color: var(--pink);
-      margin-bottom: 2px;
-      display: block;
-    }
-
-    /* CHIPS DE BATALHA (MÃO DO JOGADOR) */
-    .deck-container {
-      width: 100%;
-      max-width: 480px;
-      margin-top: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .deck-title {
-      font-family: var(--font-retro);
-      font-size: 0.55rem;
-      color: #64748b;
-      display: flex;
-      justify-content: space-between;
-    }
-    .chips-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-    }
-    .chip-btn {
-      background: #101624;
-      border: 1px solid #273552;
-      border-radius: 8px;
-      padding: 10px 4px;
+      padding: 12px 14px;
       color: #e2e8f0;
-      font-family: var(--font-ui);
-      font-size: 0.85rem;
-      font-weight: 700;
-      text-align: center;
+      font-family: var(--font-code);
+      font-size: 0.82rem;
+      line-height: 1.35;
+      text-align: left;
       cursor: pointer;
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      transition: all 0.1s;
+      align-items: flex-start;
+      gap: 10px;
+      transition: all 0.12s ease;
       -webkit-tap-highlight-color: transparent;
     }
-    .chip-btn.selected {
+    .btn-payload:active {
+      transform: scale(0.98);
+      background: #152238;
       border-color: var(--cyan);
-      box-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
-      background: #182238;
-      transform: scale(1.02);
     }
-    .chip-tag {
-      font-family: var(--font-retro);
-      font-size: 0.5rem;
+    .payload-hex {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--cyan);
+      background: rgba(0, 242, 254, 0.08);
+      padding: 2px 6px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    /* FEEDBACK DE DIAGNÓSTICO EM TEMPO REAL */
+    .kernel-report {
+      background: #040912;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      line-height: 1.4;
+      min-height: 60px;
+      max-height: 85px;
+      overflow-y: auto;
       color: var(--cyan);
     }
+    .log-alert { color: var(--red); font-weight: 700; }
+    .log-success { color: var(--green); font-weight: 700; }
 
-    /* OVERCLOCK (FRENESI DE FOCO) */
-    .overclock-active {
-      border-color: var(--yellow) !important;
-      box-shadow: 0 0 25px rgba(250, 204, 21, 0.5) !important;
+    /* EFEITO DE TREMOR (GLITCH AO ERRO OU CRITICAL OVERFLOW) */
+    .glitch-shake {
+      animation: glitchAnim 0.25s cubic-bezier(.36,.07,.19,.97) both;
     }
-
-    /* FLASH DE DANO */
-    .screen-shake {
-      animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both;
-    }
-    @keyframes shake {
-      10%, 90% { transform: translate3d(-4px, 0, 0); }
-      30%, 70% { transform: translate3d(5px, 0, 0); }
+    @keyframes glitchAnim {
+      10%, 90% { transform: translate3d(-3px, 0, 0); filter: hue-rotate(90deg); }
+      30%, 70% { transform: translate3d(4px, 0, 0); filter: invert(0.2); }
     }
   </style>
 </head>
 <body>
 
-  <!-- STATUS EM TEMPO REAL -->
-  <div class="hud">
-    <div>VIDA: <span id="txt-hp" class="hud-val" style="color:var(--green)">100%</span></div>
-    <div>PONTOS: <span id="txt-score" class="hud-val">0</span></div>
-    <div id="box-combo" class="combo-glow">0x COMBO</div>
+  <!-- BARRA DE TELEMETRIA KERNEL -->
+  <div class="telemetry-bar">
+    <div>SETORES: <span class="tel-val" id="tel-sector">01/08</span></div>
+    <div>SISTEMA: <span class="tel-val" id="tel-integrity" style="color:var(--green)">100% OK</span></div>
+    <div>SCORE: <span class="tel-val" id="tel-score">0 PTS</span></div>
+    <div>STREAK: <span class="tel-val" id="tel-streak">0x</span></div>
   </div>
 
-  <!-- ARENA MATRIX DE 3 FAIXAS -->
-  <div class="matrix-arena" id="arena">
-    <div class="defense-line"></div>
-    <div class="lane" id="lane-0" onclick="fireAtLane(0)"></div>
-    <div class="lane" id="lane-1" onclick="fireAtLane(1)"></div>
-    <div class="lane" id="lane-2" onclick="fireAtLane(2)"></div>
-    <div class="player-node" id="player">🥋</div>
-  </div>
-
-  <!-- DECK DE CHIPS TÉCNICOS -->
-  <div class="deck-container">
-    <div class="deck-title">
-      <span>CHIPS DISPONÍVEIS (SELECIONE E TOQUE NA FAIXA):</span>
-      <span id="txt-status" style="color:var(--cyan)">SISTEMA PRONTO</span>
+  <!-- FRAME DO TERMINAL -->
+  <div class="kernel-frame" id="terminal-frame">
+    <!-- TIMER VISUAL DE SOBRECARGA (TDAH URGENCY TRIGGER) -->
+    <div class="overflow-container">
+      <div class="overflow-label">
+        <span>ESTADO DO BUFFER DE MEMÓRIA</span>
+        <span id="txt-timer">12.0s RESTANTES</span>
+      </div>
+      <div class="overflow-track">
+        <div class="overflow-fill" id="overflow-bar"></div>
+      </div>
     </div>
-    <div class="chips-grid" id="chips-area"></div>
+
+    <!-- DUMP DO PROBLEMA -->
+    <div class="incident-dump">
+      <div class="incident-header">
+        <span id="dump-id">ERR_MEM_LEAK_0x89</span>
+        <span id="dump-subsystem">[SUBSISTEMA: ARQUITETURA]</span>
+      </div>
+      <div class="incident-text" id="dump-desc">Lendo registradores corrompidos...</div>
+      <div class="incident-meta" id="dump-meta">Vetor de interrupção: aguardando injeção do patch...</div>
+    </div>
+
+    <!-- INJEÇÃO DE INSTRUÇÃO (PAYLOADS) -->
+    <div class="payloads-deck" id="payloads-container"></div>
+
+    <!-- CONSOLE DE LOGS DE EXECUÇÃO -->
+    <div class="kernel-report" id="console-log">
+      > Protocolo de contenção iniciado. Inspecione o dump e selecione o patch.
+    </div>
   </div>
 
   <script>
     /* =========================================================================
-       CREDENCIAS SUPABASE INTEGRADAS
+       CREDENCIAS SUPABASE CONFIGURADAS
        ========================================================================= */
     const SUPABASE_URL = "https://aazdwdbmmvokborisuxd.supabase.co";
     const SUPABASE_KEY = "sb_publishable_TVwbt5bsVssBt7h4oSAe6Q_JzaJ1p4X";
     const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    /* ÁUDIO NATIVO RETRÔ (SEM LATÊNCIA NO IOS) */
+    /* SINTETIZADOR SONORO NATIVO REATIVO (ÁUDIO SEM LATÊNCIA NO IOS) */
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let actx = null;
-    function beep(fStart, fEnd, type = 'square', dur = 0.12) {
+
+    function playKernelSound(type) {
       if (!actx) actx = new AudioCtx();
       if (actx.state === 'suspended') actx.resume();
+
       const osc = actx.createOscillator();
       const gain = actx.createGain();
       osc.connect(gain);
       gain.connect(actx.destination);
       const now = actx.currentTime;
-      osc.type = type;
-      osc.frequency.setValueAtTime(fStart, now);
-      osc.frequency.exponentialRampToValueAtTime(fEnd, now + dur);
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.linearRampToValueAtTime(0.01, now + dur);
-      osc.start(now);
-      osc.stop(now + dur);
+
+      if (type === 'heartbeat') {
+        // Pulso grave de urgência do timer
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(65, now);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      } else if (type === 'patch_ok') {
+        // Confirmação límpida de compilação/patch aplicado
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.18);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.18);
+        osc.start(now);
+        osc.stop(now + 0.18);
+      } else if (type === 'kernel_panic') {
+        // Distorção de colapso de dados
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(50, now + 0.35);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      }
     }
 
-    /* BANCO DE ENIGMAS / INIMIGOS E RESPOSTAS */
-    const ENEMY_DATABASE = [
+    /* BANCO DE VULNERABILIDADES BASEADO NAS PROVAS */
+    const KERNEL_INCIDENTS = [
       {
-        tag: "ARQUIVO C",
-        label: "Auditoria contínua: Ler/Gravar sem apagar",
-        targetChip: "r+",
-        trapChip: "w+"
+        id: "SEGFAULT_0x01",
+        subsystem: "SISTEMAS // I/O & DISCO",
+        dump: "Rotina de auditoria financeira requer leitura contínua de registros sem sobrescrever ou truncar os blocos de dados pré-existentes no fopen().",
+        meta: "Alvo: Selecionar o descritor de stream exato para persistência.",
+        options: [
+          { code: "0x01", text: "Patch 'r+': Permite leitura e escrita sem excluir o conteúdo já existente.", type: "patch_ok", note: "[SUCESSO] Bytes originais intactos. Fluxo r+ liberado." },
+          { code: "0x02", text: "Patch 'w+': Criação para leitura/escrita truncando o arquivo a 0 bytes.", type: "trap", note: "[KERNEL PANIC] Falha fatal: 'w+' apagou o log da empresa no momento da abertura!" },
+          { code: "0x03", text: "Patch 'r': Apenas gravação de dados descartando leitura anterior.", type: "fail", note: "[REJEIÇÃO] Modo 'r' restringe a operação a apenas leitura." }
+        ]
       },
       {
-        tag: "EPISTEME",
-        label: "Dúvida radical dos sentidos para refundar o saber",
-        targetChip: "Descartes",
-        trapChip: "Platão"
+        id: "STACK_OVERFLOW_0x02",
+        subsystem: "ALGORITMOS // RECURSÃO",
+        dump: "Chamadas sucessivas da função recursiva estão empilhando frames sem retorno, aproximando-se do teto da memória stack da CPU.",
+        meta: "Alvo: Disparar a interrupção formal de auto-invocação.",
+        options: [
+          { code: "0x01", text: "Condição-Base de Parada: Retornar no caso trivial e desempilhar a stack.", type: "patch_ok", note: "[SUCESSO] Caso-base atingido. Frames descarregados com êxito." },
+          { code: "0x02", text: "Conversão forçada de todos os tipos primitivos em ponteiros estáticos.", type: "trap", note: "[AVISO DE ARQUITETURA] Ponteiros não resolvem recursão descontrolada." },
+          { code: "0x03", text: "Duplicação contínua da pilha para acomodar loops infinitos.", type: "fail", note: "[FALHA CRÍTICA] Duplicar a pilha apenas acelera o crash total." }
+        ]
       },
       {
-        tag: "CPU CORE",
-        label: "Registradores + Unidade Controle + ...?",
-        targetChip: "ULA",
-        trapChip: "Barramentos"
+        id: "CPU_REGISTER_0x03",
+        subsystem: "HARDWARE // VON NEUMANN",
+        dump: "Barramento central aguarda o alinhamento da tríade funcional elementar responsável pelo processamento na CPU.",
+        meta: "Alvo: Identificar os três módulos constitutivos essenciais do processador.",
+        options: [
+          { code: "0x01", text: "Registradores + Unidade de Controle (UC) + ULA (Unidade Lógica e Aritmética).", type: "patch_ok", note: "[SUCESSO] Core operacional reconhecido de acordo com modelo clássico." },
+          { code: "0x02", text: "Registradores + Barramento de Dados + Memória Cache L1.", type: "trap", note: "[DISTRATOR] Barramentos realizam interconexão, mas não constituem o núcleo funcional." },
+          { code: "0x03", text: "Buffers de I/O + Memória Virtual + Placa Controladora.", type: "fail", note: "[FALHA] Memória virtual reside no subsistema de armazenamento." }
+        ]
       },
       {
-        tag: "PODER",
-        label: "Microfísica: Rede capilar produtiva de saber",
-        targetChip: "Foucault",
-        trapChip: "Nietzsche"
+        id: "EPISTEME_CORRUPT_0x04",
+        subsystem: "FILOSOFIA // CARTESIANISMO",
+        dump: "Dados recebidos através dos sentidos revelaram anomalias e ilusões sensoriais, contaminando o edifício do conhecimento.",
+        meta: "Alvo: Método de Descartes para reestruturação racional e indubitável.",
+        options: [
+          { code: "0x01", text: "Dúvida Metódica: Rejeitar as opiniões frágeis até atingir uma verdade sólida.", type: "patch_ok", note: "[SUCESSO] Axioma do Cogito estabelecido como fundamento indestrutível." },
+          { code: "0x02", text: "Fundamentação empírica: Estabelecer os sentidos como autoridade máxima.", type: "trap", note: "[PARADOXO] Incompatibilidade cartesiana: Sentidos são fontes de engano." },
+          { code: "0x03", text: "Postular o ceticismo absoluto declarando a verdade inalcançável.", type: "fail", note: "[REJEIÇÃO] Descartes utiliza a dúvida como método, não como destino final." }
+        ]
       },
       {
-        tag: "MEMÓRIA",
-        label: "Mecanismo obrigatório para travar Stack Overflow",
-        targetChip: "Caso-Base",
-        trapChip: "Ponteiro"
+        id: "POWER_GRID_0x05",
+        subsystem: "FILOSOFIA POLÍTICA // FOUCAULT",
+        dump: "Análise da rede institucional rejeita o modelo puramente jurídico de repressão negativa e proibição estatal.",
+        meta: "Alvo: Mecanismo de capilaridade do poder contemporâneo.",
+        options: [
+          { code: "0x01", text: "Rede Capilar e Produtiva: Disseminadora de saber, prazer e subjetividades.", type: "patch_ok", note: "[SUCESSO] Microfísica identificada: O poder produz realidades e discursos." },
+          { code: "0x02", text: "Aparelho centralizado de Estado focado unicamente na punição física.", type: "trap", note: "[DISTRATOR HISTÓRICO] Modelo de soberania superado pela sociedade disciplinar." },
+          { code: "0x03", text: "Processo restrito exclusivamente à criação estética de conceitos por Deleuze.", type: "fail", note: "[CONFUSÃO DE AUTORIA] Criação de conceitos é o conceito deleuziano de filosofia." }
+        ]
       },
       {
-        tag: "ESTRUTURAS",
-        label: "Entrada num extremo e saída estrita no outro",
-        targetChip: "Fila (FIFO)",
-        trapChip: "Pilha (LIFO)"
+        id: "DATA_QUEUE_0x06",
+        subsystem: "ESTRUTURAS DE DADOS // FILAS",
+        dump: "Buffer de pacotes em rede necessita de uma política de acesso estrita onde o primeiro elemento a entrar seja o primeiro a sair.",
+        meta: "Alvo: Política de acesso estrutural da Fila (Queue).",
+        options: [
+          { code: "0x01", text: "Política FIFO: Entrada feita por um extremo e saída estritamente pelo outro.", type: "patch_ok", note: "[SUCESSO] Ordem sequencial garantida sem inversão de prioridade." },
+          { code: "0x02", text: "Política LIFO: Entrada e saída ocorrem no mesmo topo da estrutura.", type: "trap", note: "[COLISÃO CONCEITUAL] LIFO (Last-In, First-Out) define as Pilhas (Stack)." },
+          { code: "0x03", text: "Acesso por indexação aleatória no meio através de busca binária.", type: "fail", note: "[FALHA] Filas não admitem inserções ou remoções intermediárias arbitrárias." }
+        ]
       }
     ];
 
-    const ALL_CHIPS = ["r+", "w+", "Descartes", "Platão", "ULA", "Barramentos", "Foucault", "Nietzsche", "Caso-Base", "Fila (FIFO)"];
-
-    let playerHP = 100;
+    /* ESTADO DO SISTEMA */
+    let currentIdx = 0;
     let score = 0;
     let streak = 0;
-    let activeEnemies = [];
-    let selectedChip = null;
-    let gameLoop = null;
-    let spawnTimer = null;
+    let integrity = 100;
+    let timerSeconds = 12.0;
+    let timerInterval = null;
+    let vulnerabilitiesLogged = {};
 
-    // Posiciona o jogador na faixa
-    function updatePlayerPos(laneIdx) {
-      const p = document.getElementById('player');
-      const positions = ['12%', '45%', '78%'];
-      p.style.left = positions[laneIdx];
-    }
-
-    function renderDeck() {
-      const area = document.getElementById('chips-area');
-      area.innerHTML = '';
-      
-      // Garante uma rotação dinâmica de 6 chips
-      const currentTargetChips = activeEnemies.map(e => e.data.targetChip);
-      const randomFillers = ALL_CHIPS.filter(c => !currentTargetChips.includes(c)).sort(() => Math.random() - 0.5);
-      const hand = [...new Set([...currentTargetChips, ...randomFillers])].slice(0, 6).sort(() => Math.random() - 0.5);
-
-      hand.forEach((chipName, idx) => {
-        const btn = document.createElement('button');
-        btn.className = 'chip-btn';
-        if (selectedChip === chipName) btn.classList.add('selected');
-        btn.innerHTML = `<span class="chip-tag">CHIP 0${idx+1}</span><span>${chipName}</span>`;
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          selectChip(chipName);
-        };
-        area.appendChild(btn);
-      });
-    }
-
-    function selectChip(name) {
-      selectedChip = name;
-      beep(600, 800, 'sine', 0.08);
-      document.querySelectorAll('.chip-btn').forEach(b => {
-        b.classList.toggle('selected', b.innerText.includes(name));
-      });
-      document.getElementById('txt-status').innerText = `ARMADO: [${name}]`;
-    }
-
-    function spawnEnemy() {
-      if (activeEnemies.length >= 3) return;
-
-      const randomData = ENEMY_DATABASE[Math.floor(Math.random() * ENEMY_DATABASE.length)];
-      const lane = Math.floor(Math.random() * 3);
-
-      // Evita dois inimigos sobrepostos na mesma lane
-      if (activeEnemies.some(e => e.lane === lane && e.y < 90)) return;
-
-      const laneElem = document.getElementById(`lane-${lane}`);
-      const el = document.createElement('div');
-      el.className = 'enemy';
-      el.innerHTML = `<span class="enemy-type">${randomData.tag}</span>${randomData.label}`;
-      laneElem.appendChild(el);
-
-      activeEnemies.push({
-        lane: lane,
-        y: 0,
-        speed: 1.1 + (streak * 0.1), // Fica mais rápido com combos
-        element: el,
-        data: randomData
-      });
-
-      renderDeck();
-    }
-
-    function fireAtLane(laneIdx) {
-      updatePlayerPos(laneIdx);
-
-      if (!selectedChip) {
-        document.getElementById('txt-status').innerText = "⚠️ SELECIONE UM CHIP PRIMEIRO!";
-        beep(120, 80, 'sawtooth', 0.1);
+    function startIncident() {
+      if (currentIdx >= KERNEL_INCIDENTS.length) {
+        showFinalReport();
         return;
       }
 
-      // Procura o inimigo mais próximo na faixa selecionada
-      const targetEnemy = activeEnemies
-        .filter(e => e.lane === laneIdx)
-        .sort((a, b) => b.y - a.y)[0];
+      const item = KERNEL_INCIDENTS[currentIdx];
+      document.getElementById('tel-sector').innerText = `0${currentIdx+1}/0${KERNEL_INCIDENTS.length}`;
+      document.getElementById('dump-id').innerText = item.id;
+      document.getElementById('dump-subsystem').innerText = `[${item.subsystem}]`;
+      document.getElementById('dump-desc').innerText = item.dump;
+      document.getElementById('dump-meta').innerText = item.meta;
 
-      if (targetEnemy) {
-        if (selectedChip === targetEnemy.data.targetChip) {
-          // ACERTO CRÍTICO!
-          beep(400, 950, 'square', 0.15);
-          score += 50 + (streak * 10);
-          streak++;
-          destroyEnemy(targetEnemy, true);
-        } else {
-          // DISTRATOR / ERRO
-          beep(180, 60, 'sawtooth', 0.25);
-          streak = 0;
-          playerHP = Math.max(0, playerHP - 15);
-          triggerShake();
-        }
-      } else {
-        // Disparo no vácuo
-        beep(250, 150, 'triangle', 0.08);
-      }
+      const deck = document.getElementById('payloads-container');
+      deck.innerHTML = '';
 
-      updateHUD();
-      selectedChip = null;
-      renderDeck();
-    }
+      // Embaralhar as opções para evitar memória muscular de posição
+      const shuffled = [...item.options].sort(() => Math.random() - 0.5);
 
-    function destroyEnemy(enemy, isKill) {
-      enemy.element.remove();
-      activeEnemies = activeEnemies.filter(e => e !== enemy);
-    }
-
-    function triggerShake() {
-      const arena = document.getElementById('arena');
-      arena.classList.add('screen-shake');
-      setTimeout(() => arena.classList.remove('screen-shake'), 220);
-    }
-
-    function updateHUD() {
-      document.getElementById('txt-hp').innerText = `${playerHP}%`;
-      document.getElementById('txt-score').innerText = score;
-      const cBox = document.getElementById('box-combo');
-      cBox.innerText = `${streak}x COMBO`;
-
-      if (streak >= 4) {
-        document.getElementById('arena').classList.add('overclock-active');
-        cBox.innerText = `🔥 OVERCLOCK ${streak}x`;
-      } else {
-        document.getElementById('arena').classList.remove('overclock-active');
-      }
-
-      if (playerHP <= 25) {
-        document.getElementById('txt-hp').style.color = 'var(--pink)';
-      }
-    }
-
-    function runGameLoop() {
-      activeEnemies.forEach(enemy => {
-        enemy.y += enemy.speed;
-        enemy.element.style.top = `${enemy.y}px`;
-
-        // Se o inimigo cruzar a linha de defesa (310px)
-        if (enemy.y >= 310) {
-          playerHP = Math.max(0, playerHP - 20);
-          streak = 0;
-          beep(120, 40, 'sawtooth', 0.3);
-          triggerShake();
-          destroyEnemy(enemy, false);
-          updateHUD();
-
-          if (playerHP <= 0) {
-            gameOver();
-          }
-        }
+      shuffled.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-payload';
+        btn.innerHTML = `<span class="payload-hex">${opt.code}</span> <span>${opt.text}</span>`;
+        btn.onclick = () => injectPatch(opt);
+        deck.appendChild(btn);
       });
+
+      // Iniciar Timer do Buffer Overflow
+      resetTimer();
     }
 
-    function gameOver() {
-      clearInterval(gameLoop);
-      clearInterval(spawnTimer);
-      alert(`☠️ BRECHA NO SISTEMA! Pontuação Final: ${score}`);
-      saveProgress(score);
-      // Reinicia arena
-      location.reload();
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerSeconds = 12.0;
+      updateTimerUI();
+
+      timerInterval = setInterval(() => {
+        timerSeconds -= 0.1;
+        if (timerSeconds <= 4.0 && timerSeconds > 0) {
+          playKernelSound('heartbeat');
+        }
+
+        if (timerSeconds <= 0) {
+          clearInterval(timerInterval);
+          bufferOverflowTimeout();
+        }
+        updateTimerUI();
+      }, 100);
     }
 
-    async function saveProgress(finalScore) {
+    function updateTimerUI() {
+      const pct = Math.max(0, (1 - (timerSeconds / 12.0)) * 100);
+      document.getElementById('overflow-bar').style.width = pct + '%';
+      document.getElementById('txt-timer').innerText = `${Math.max(0, timerSeconds).toFixed(1)}s RESTANTES`;
+    }
+
+    function bufferOverflowTimeout() {
+      playKernelSound('kernel_panic');
+      triggerGlitch();
+      integrity = Math.max(0, integrity - 25);
+      streak = 0;
+      logConsole(`<span class="log-alert">[ESTOURO DE BUFFER] Tempo esgotado! Integridade reduzida (-25%).</span>`);
+      recordVulnerability(KERNEL_INCIDENTS[currentIdx].id, "TIMEOUT_OVERFLOW");
+      updateTelemetry();
+      advanceSector();
+    }
+
+    function injectPatch(opt) {
+      clearInterval(timerInterval);
+
+      if (opt.type === 'patch_ok') {
+        playKernelSound('patch_ok');
+        score += 100 + (streak * 20);
+        streak++;
+        logConsole(`<span class="log-success">${opt.note}</span>`);
+      } else {
+        playKernelSound('kernel_panic');
+        triggerGlitch();
+        integrity = Math.max(0, integrity - 20);
+        streak = 0;
+        logConsole(`<span class="log-alert">${opt.note}</span>`);
+        recordVulnerability(KERNEL_INCIDENTS[currentIdx].id, opt.type);
+      }
+
+      updateTelemetry();
+      setTimeout(advanceSector, 1000);
+    }
+
+    function advanceSector() {
+      if (integrity <= 0) {
+        alert("☠️ KERNEL PANIC IRRECUPERÁVEL. O sistema reiniciará para nova contenção.");
+        location.reload();
+        return;
+      }
+      currentIdx++;
+      startIncident();
+    }
+
+    function triggerGlitch() {
+      const frame = document.getElementById('terminal-frame');
+      frame.classList.add('glitch-shake');
+      setTimeout(() => frame.classList.remove('glitch-shake'), 260);
+    }
+
+    function logConsole(msg) {
+      const c = document.getElementById('console-log');
+      c.innerHTML = `> ${msg}<br>` + c.innerHTML;
+    }
+
+    function updateTelemetry() {
+      document.getElementById('tel-score').innerText = `${score} PTS`;
+      document.getElementById('tel-streak').innerText = `${streak}x`;
+      const intTxt = document.getElementById('tel-integrity');
+      intTxt.innerText = `${integrity}%`;
+      intTxt.style.color = integrity > 50 ? 'var(--green)' : 'var(--red)';
+    }
+
+    function recordVulnerability(incidentId, reason) {
+      vulnerabilitiesLogged[incidentId] = (vulnerabilitiesLogged[incidentId] || 0) + 1;
+    }
+
+    async function showFinalReport() {
+      clearInterval(timerInterval);
+      playKernelSound('patch_ok');
+
+      const deck = document.getElementById('payloads-container');
+      deck.innerHTML = `
+        <div style="background:#0a1324; border:1px solid var(--green); border-radius:6px; padding:14px; text-align:center;">
+          <h3 style="color:var(--green); font-size:1.1rem; margin-bottom:8px;">PROTOCOLO CONCLUÍDO COM ÊXITO</h3>
+          <p style="font-size:0.85rem; line-height:1.4; color:#e2e8f0; margin-bottom:12px;">
+            Todos os setores foram estabilizados. Telemetria salva na nuvem.
+          </p>
+          <button class="btn-payload" style="justify-content:center; width:100%; font-weight:700;" onclick="location.reload()">
+            REINICIAR OPERAÇÃO ZERO-DAY
+          </button>
+        </div>
+      `;
+
+      // Sincronização automática com Supabase
       try {
         await sbClient.from('oraculo_progress').upsert({
           user_id: 'amanda_anshiran',
-          level: Math.floor(finalScore / 200) + 1,
-          xp: finalScore,
+          level: Math.floor(score / 150) + 1,
+          xp: score,
           streak: streak,
-          weaknesses: { modo: "arcade_realtime", score: finalScore },
+          weaknesses: vulnerabilitiesLogged,
           updated_at: new Date().toISOString()
         });
+        logConsole(`<span class="log-success">[TELEMETRIA SINCRONIZADA] Estado registrado no Supabase.</span>`);
       } catch (err) {
-        console.warn("Sync:", err);
+        console.warn("Supabase Save:", err);
       }
     }
 
-    // Inicialização do Jogo
-    updatePlayerPos(1);
-    renderDeck();
-    gameLoop = setInterval(runGameLoop, 30);
-    spawnTimer = setInterval(spawnEnemy, 2400);
+    // Inicializar estação
+    startIncident();
   </script>
 </body>
 </html>
