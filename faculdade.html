@@ -3,794 +3,750 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Chronicles of the Kernel: MMORPG Acadêmico</title>
+  <title>Siliconia MMO: O Despertar do Kernel</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
   <style>
     :root {
       --font-pixel: 'Press Start 2P', monospace;
       --font-mono: 'Share Tech Mono', monospace;
-      --font-body: 'Inter', sans-serif;
+      --font-sans: 'Inter', sans-serif;
 
-      /* Borahae / Cyberpunk Padrão */
-      --bg-color: #070914;
-      --panel-bg: #121026;
-      --panel-border: #6366f1;
-      --accent: #a855f7;
-      --accent-glow: rgba(168, 85, 247, 0.35);
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --success: #10b981;
-      --error: #ef4444;
-      --warn: #f59e0b;
-      --hp-bar: #ef4444;
-      --mp-bar: #38bdf8;
+      --bg-dark: #06070d;
+      --panel-bg: rgba(13, 17, 34, 0.92);
+      --panel-border: #4338ca;
+      --accent: #8b5cf6;
+      --accent-glow: rgba(139, 92, 246, 0.4);
+      --hp: #ef4444;
+      --mp: #06b6d4;
+      --exp: #10b981;
+      --gold: #f59e0b;
     }
 
-    body[data-theme="untamed"] {
-      --bg-color: #0d0404;
-      --panel-bg: #1c0909;
-      --panel-border: #991b1b;
-      --accent: #f87171;
-      --accent-glow: rgba(248, 113, 113, 0.35);
-      --text: #fef2f2;
-      --text-muted: #bda3a3;
-    }
-
-    body[data-theme="ghibli"] {
-      --bg-color: #041209;
-      --panel-bg: #092415;
-      --panel-border: #166534;
-      --accent: #4ade80;
-      --accent-glow: rgba(74, 222, 128, 0.35);
-      --text: #f0fdf4;
-      --text-muted: #86a894;
-    }
-
-    body[data-theme="coraline"] {
-      --bg-color: #080918;
-      --panel-bg: #12142e;
-      --panel-border: #3730a3;
-      --accent: #f472b6;
-      --accent-glow: rgba(244, 114, 182, 0.35);
-      --text: #fdf2f8;
-      --text-muted: #9ca3af;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
 
     body {
-      background-color: var(--bg-color);
-      color: var(--text);
-      font-family: var(--font-body);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 8px 12px 30px 12px;
-      user-select: none;
-      -webkit-font-smoothing: antialiased;
-      transition: background-color 0.3s ease;
-    }
-
-    .mmo-app {
-      width: 100%;
-      max-width: 480px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    /* TOP BAR DO SERVIDOR */
-    header {
-      background: var(--panel-bg);
-      border: 1.5px solid var(--panel-border);
-      border-radius: 8px;
-      padding: 8px 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 4px 12px var(--accent-glow);
-    }
-
-    .server-status {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 10px;
-      font-family: var(--font-pixel);
-      color: var(--success);
-    }
-    .status-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--success);
-      box-shadow: 0 0 8px var(--success);
-      animation: pulse 1.5s infinite;
-    }
-
-    .theme-picker { display: flex; gap: 4px; }
-    .btn-theme {
-      background: rgba(0,0,0,0.5);
-      border: 1px solid var(--panel-border);
-      border-radius: 6px;
-      font-size: 13px;
-      padding: 4px 7px;
-      cursor: pointer;
-    }
-    .btn-theme.active { border-color: var(--accent); background: var(--accent-glow); }
-
-    /* PAINEL DO HERÓI (HP / MP / LVL) */
-    .hero-hud {
-      background: var(--panel-bg);
-      border: 1.5px solid var(--panel-border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .hud-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .hero-name {
-      font-family: var(--font-pixel);
-      font-size: 10px;
-      color: var(--warn);
-    }
-    .hero-rank {
-      font-size: 11px;
-      color: var(--accent);
-      font-weight: 600;
-    }
-
-    .bars-container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-    .bar-wrap {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .bar-label {
-      font-size: 10px;
-      font-family: var(--font-pixel);
-      display: flex;
-      justify-content: space-between;
-    }
-    .progress-bar {
-      height: 8px;
-      background: #000;
-      border: 1px solid var(--panel-border);
-      border-radius: 4px;
+      background-color: var(--bg-dark);
+      color: #f8fafc;
+      font-family: var(--font-sans);
+      width: 100vw;
+      height: 100vh;
       overflow: hidden;
-    }
-    .bar-fill-hp { height: 100%; background: var(--hp-bar); width: 100%; transition: width 0.3s; }
-    .bar-fill-mp { height: 100%; background: var(--mp-bar); width: 100%; transition: width 0.3s; }
-
-    /* VIEWPORT DO MUNDO (CANVAS MMORPG) */
-    .viewport-frame {
-      position: relative;
-      background: #000;
-      border: 2px solid var(--panel-border);
-      border-radius: 10px;
-      overflow: hidden;
-      width: 100%;
-      height: 240px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.8);
-      touch-action: none;
+      position: fixed;
     }
 
-    canvas#mmoCanvas {
-      width: 100%;
-      height: 100%;
+    /* VIEWPORT DO MUNDO RPG (TELA CHEIA) */
+    #canvas-container {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 1;
+    }
+    canvas#gameCanvas {
+      width: 100%; height: 100%;
       display: block;
       image-rendering: pixelated;
     }
 
-    .canvas-overlay-text {
+    /* INTERFACE HUD SUPERIOR */
+    .top-hud {
       position: absolute;
-      bottom: 6px; left: 0; right: 0;
-      text-align: center;
-      font-size: 10px;
-      color: rgba(255,255,255,0.7);
-      background: rgba(0,0,0,0.6);
-      padding: 3px 0;
+      top: 10px; left: 10px; right: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      z-index: 10;
       pointer-events: none;
     }
 
-    /* CHAT MMORPG GLOBAL */
-    .chat-box {
+    .player-plate {
       background: var(--panel-bg);
-      border: 1.5px solid var(--panel-border);
+      border: 2px solid var(--panel-border);
       border-radius: 8px;
       padding: 8px 12px;
-      height: 70px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      width: 220px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+      pointer-events: auto;
+    }
+
+    .plate-header {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-pixel);
+      font-size: 8px;
+      color: var(--gold);
+    }
+
+    .bar-shell {
+      height: 8px;
+      background: #000;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+    .bar-fill-hp { height: 100%; background: var(--hp); width: 100%; transition: width 0.2s; }
+    .bar-fill-mp { height: 100%; background: var(--mp); width: 100%; transition: width 0.2s; }
+    .bar-fill-xp { height: 100%; background: var(--exp); width: 0%; transition: width 0.2s; }
+
+    .target-plate {
+      display: none;
+      background: var(--panel-bg);
+      border: 2px solid #ef4444;
+      border-radius: 8px;
+      padding: 8px 12px;
+      width: 180px;
+      flex-direction: column;
+      gap: 4px;
+      pointer-events: auto;
+    }
+
+    /* CHAT MMORPG LATERAL / INFERIOR */
+    .mmo-chat {
+      position: absolute;
+      bottom: 95px; left: 10px;
+      width: 280px; height: 85px;
+      background: rgba(10, 13, 26, 0.75);
+      border: 1.5px solid rgba(99, 102, 241, 0.3);
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
       overflow-y: hidden;
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      font-family: var(--font-mono);
-      font-size: 11px;
+      gap: 3px;
+      pointer-events: none;
+      z-index: 10;
     }
-    .chat-msg {
-      line-height: 1.3;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .chat-user { color: var(--accent); font-weight: 700; }
-    .chat-server { color: var(--warn); }
+    .chat-row { line-height: 1.2; text-shadow: 1px 1px 0 #000; }
+    .chat-author { color: var(--accent); font-weight: 700; }
+    .chat-loot { color: var(--gold); }
+    .chat-server { color: #38bdf8; }
 
-    /* ATALHOS TOUCH DOS SETORES */
-    .districts-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    .btn-district {
-      background: var(--panel-bg);
-      border: 1.5px solid var(--panel-border);
-      border-radius: 8px;
-      padding: 10px 12px;
+    /* HOTBAR DE HABILIDADES & AÇÕES (MMO STYLE) */
+    .bottom-bar {
+      position: absolute;
+      bottom: 12px; left: 0; right: 0;
       display: flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer;
-      text-align: left;
-      transition: all 0.2s;
-    }
-    .btn-district:active { transform: scale(0.97); border-color: var(--accent); }
-    .btn-district.boss { border-color: var(--error); background: rgba(239,68,68,0.1); }
-
-    .district-icon { font-size: 22px; flex-shrink: 0; }
-    .district-title { font-size: 12px; font-weight: 700; color: #fff; }
-    .district-desc { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
-
-    /* MODAL DE MISSÃO / BATALHA DE BOSS */
-    .quest-sheet {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.88);
-      backdrop-filter: blur(5px);
-      z-index: 100;
-      padding: 14px;
       justify-content: center;
-      align-items: flex-end;
-    }
-    .quest-sheet.active {
-      display: flex;
-      animation: sheetSlide 0.25s ease-out;
+      gap: 8px;
+      z-index: 20;
+      pointer-events: auto;
+      padding: 0 10px;
     }
 
-    .sheet-wrapper {
+    .skill-slot {
+      width: 54px; height: 54px;
       background: var(--panel-bg);
-      border: 2px solid var(--accent);
-      border-radius: 12px;
-      width: 100%;
-      max-width: 460px;
-      max-height: 88vh;
-      overflow-y: auto;
-      padding: 18px;
-      box-shadow: 0 -4px 30px rgba(0,0,0,0.9);
-    }
-
-    .sheet-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-      padding-bottom: 8px;
-      margin-bottom: 12px;
-    }
-    .sheet-title {
-      font-family: var(--font-pixel);
-      font-size: 9px;
-      color: var(--warn);
-    }
-
-    .quest-context {
-      font-size: 13px;
-      color: #cbd5e1;
-      margin-bottom: 12px;
-      line-height: 1.5;
-    }
-
-    .challenge-panel {
-      background: rgba(0,0,0,0.5);
-      border: 1px dashed var(--accent);
+      border: 2px solid var(--panel-border);
       border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 14px;
-    }
-    .challenge-text {
-      font-size: 13px;
-      font-weight: 600;
-      color: #fff;
-      margin-bottom: 12px;
-    }
-
-    .options-stack {
       display: flex;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+      transition: all 0.1s;
+    }
+    .skill-slot:active { transform: scale(0.92); border-color: var(--accent); }
+    .skill-key {
+      position: absolute;
+      top: 2px; left: 4px;
+      font-family: var(--font-pixel);
+      font-size: 7px;
+      color: rgba(255,255,255,0.6);
+    }
+    .skill-icon { font-size: 18px; margin-top: 4px; }
+    .skill-name { font-size: 8px; font-weight: 700; text-transform: uppercase; color: #cbd5e1; }
+
+    /* MODAL DE QUEST / DIÁLOGO COM NPC */
+    .quest-dialogue {
+      display: none;
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%; max-width: 440px;
+      background: var(--panel-bg);
+      border: 3px solid var(--gold);
+      border-radius: 12px;
+      padding: 16px;
+      z-index: 50;
+      box-shadow: 0 0 35px rgba(0,0,0,0.95);
+    }
+    .quest-dialogue.open { display: flex; flex-direction: column; gap: 12px; }
+
+    .npc-banner {
+      display: flex;
+      align-items: center;
       gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 8px;
+    }
+    .npc-portrait {
+      width: 40px; height: 40px;
+      border: 2px solid var(--gold);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      background: #000;
     }
 
-    .btn-quest-opt {
-      background: rgba(255,255,255,0.04);
+    .quest-content { font-size: 13px; line-height: 1.5; color: #e2e8f0; }
+    .quest-options { display: flex; flex-direction: column; gap: 8px; }
+
+    .btn-quest-choice {
+      background: rgba(255,255,255,0.06);
       border: 1px solid var(--panel-border);
-      border-radius: 8px;
-      color: var(--text);
-      font-family: var(--font-body);
-      font-size: 13px;
-      padding: 12px 14px;
+      border-radius: 6px;
+      color: #fff;
+      padding: 10px 12px;
+      font-size: 12px;
       text-align: left;
       cursor: pointer;
       line-height: 1.4;
-      min-height: 48px;
     }
-    .btn-quest-opt:active {
-      background: var(--accent-glow);
-      border-color: var(--accent);
-    }
+    .btn-quest-choice:active { border-color: var(--accent); background: var(--accent-glow); }
 
-    .sheet-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-top: 14px;
-    }
-    .btn-dismiss {
+    .btn-dialogue-close {
+      align-self: flex-end;
       background: transparent;
       border: 1px solid var(--panel-border);
-      border-radius: 6px;
       color: var(--text-muted);
-      padding: 8px 14px;
-      font-size: 12px;
+      border-radius: 4px;
+      padding: 6px 12px;
+      font-size: 11px;
       cursor: pointer;
     }
 
-    @keyframes sheetSlide {
-      from { transform: translateY(100%); }
-      to { transform: translateY(0); }
+    /* CONTROLE ANALÓGICO MOBILE (JOYSTICK VIRTUAL DINÂMICO) */
+    .touch-zone-left {
+      position: absolute;
+      bottom: 85px; left: 15px;
+      width: 110px; height: 110px;
+      border: 2px dashed rgba(255,255,255,0.15);
+      border-radius: 50%;
+      z-index: 15;
+      display: none;
     }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
+    @media (max-width: 768px) {
+      .touch-zone-left { display: block; }
+      .mmo-chat { width: 180px; bottom: 85px; }
     }
   </style>
 </head>
-<body data-theme="bts">
+<body>
 
-  <div class="mmo-app">
-    <!-- STATUS DO SERVIDOR -->
-    <header>
-      <div class="server-status">
-        <div class="status-dot"></div>
-        <span>SILICONIA [SVR-1]</span>
-      </div>
-      <div class="theme-picker">
-        <button class="btn-theme active" onclick="setMmoTheme('bts', event)">💜</button>
-        <button class="btn-theme" onclick="setMmoTheme('untamed', event)">🏮</button>
-        <button class="btn-theme" onclick="setMmoTheme('ghibli', event)">🌿</button>
-        <button class="btn-theme" onclick="setMmoTheme('coraline', event)">🗝️</button>
-      </div>
-    </header>
+  <!-- VIEWPORT DO JOGO -->
+  <div id="canvas-container">
+    <canvas id="gameCanvas"></canvas>
+  </div>
 
-    <!-- STATUS DO PERSONAGEM (AMANDA) -->
-    <div class="hero-hud">
-      <div class="hud-meta">
-        <span class="hero-name">👑 AMANDA (ANSHIRAN)</span>
-        <span class="hero-rank" id="hud-level">LVL 1 • COMPILADOR</span>
+  <!-- HUD SUPERIOR -->
+  <div class="top-hud">
+    <!-- Player Plate -->
+    <div class="player-plate">
+      <div class="plate-header">
+        <span>AMANDA</span>
+        <span id="player-lvl">LVL 1</span>
       </div>
-      <div class="bars-container">
-        <div class="bar-wrap">
-          <div class="bar-label"><span>HP</span><span id="hp-text">100/100</span></div>
-          <div class="progress-bar"><div class="bar-fill-hp" id="hp-bar"></div></div>
-        </div>
-        <div class="bar-wrap">
-          <div class="bar-label"><span>XP</span><span id="xp-text">0/500</span></div>
-          <div class="progress-bar"><div class="bar-fill-mp" id="xp-bar"></div></div>
-        </div>
-      </div>
+      <div class="bar-shell"><div class="bar-fill-hp" id="hp-bar"></div></div>
+      <div class="bar-shell"><div class="bar-fill-mp" id="mp-bar"></div></div>
+      <div class="bar-shell"><div class="bar-fill-xp" id="xp-bar"></div></div>
     </div>
 
-    <!-- MUNDO VIVO EM CANVAS (JOGADOR + OUTROS PLAYERS ONLINE) -->
-    <div class="viewport-frame" id="viewportFrame">
-      <canvas id="mmoCanvas" width="400" height="240"></canvas>
-      <div class="canvas-overlay-text">Toque no mapa ou nos setores para navegar e ativar missões</div>
-    </div>
-
-    <!-- CHAT GLOBAL DO SERVIDOR -->
-    <div class="chat-box" id="mmoChat">
-      <div class="chat-msg"><span class="chat-server">[SISTEMA]:</span> Bem-vinda a Siliconia, Amanda! O Kernel aguarda restauração.</div>
-      <div class="chat-msg"><span class="chat-user">Ghost_Dev_99:</span> Alguém sabe como evitar TLB Miss no nível 2?</div>
-      <div class="chat-msg"><span class="chat-user">Linus_Fan:</span> Use localidade espacial e temporal!</div>
-    </div>
-
-    <!-- DISTRITOS DE MISSÕES / BOSS -->
-    <div class="districts-grid">
-      <div class="btn-district" onclick="openDistrict('alocacao')">
-        <div class="district-icon">🧠</div>
-        <div>
-          <div class="district-title">Câmara das Partições</div>
-          <div class="district-desc">S.O. // Best-fit & Fragmentação</div>
-        </div>
-      </div>
-
-      <div class="btn-district" onclick="openDistrict('ponteiros_heap')">
-        <div class="district-icon">🏮</div>
-        <div>
-          <div class="district-title">Forjas de Ponteiros</div>
-          <div class="district-desc">C // Malloc, Free & Aritmética</div>
-        </div>
-      </div>
-
-      <div class="btn-district" onclick="openDistrict('disco_io')">
-        <div class="district-icon">💾</div>
-        <div>
-          <div class="district-title">Masmorra dos Cilindros</div>
-          <div class="district-desc">S.O. // FAT, Inodes & DMA</div>
-        </div>
-      </div>
-
-      <div class="btn-district boss" onclick="openDistrict('boss_kernel')">
-        <div class="district-icon">👾</div>
-        <div>
-          <div class="district-title">BOSS: O Kernel Panic</div>
-          <div class="district-desc">Desafio de Maestria Integrada</div>
-        </div>
-      </div>
+    <!-- Target Plate (Monstro Travado) -->
+    <div class="target-plate" id="target-plate">
+      <div style="font-family:var(--font-pixel); font-size:8px; color:#ef4444;" id="target-name">BUG_DE_HEAP</div>
+      <div class="bar-shell"><div class="bar-fill-hp" id="target-hp-bar" style="background:#ef4444;"></div></div>
     </div>
   </div>
 
-  <!-- MODAL DE DIÁLOGO E COMBATE PEDAGÓGICO -->
-  <div class="quest-sheet" id="questSheet">
-    <div class="sheet-wrapper">
-      <div class="sheet-head">
-        <div class="sheet-title" id="sheetGuardian">NOME DO GUARDIÃO</div>
-        <span style="font-size:10px; color:var(--text-muted);" id="sheetModule">MÓDULO</span>
-      </div>
+  <!-- CHAT MMORPG -->
+  <div class="mmo-chat" id="mmo-chat">
+    <div class="chat-row"><span class="chat-server">[KERNEL]:</span> Servidor conectado. Bem-vinda a Siliconia!</div>
+  </div>
 
-      <div class="quest-context" id="sheetContext">Contexto narrativo do desafio...</div>
+  <!-- ANALÓGICO TOUCH (MOBILE) -->
+  <div class="touch-zone-left" id="touchJoystick"></div>
 
-      <div class="challenge-panel" id="sheetPanel">
-        <div class="challenge-text" id="sheetQuestion">Problema prático a ser resolvido...</div>
-        <div class="options-stack" id="sheetOptions"></div>
-      </div>
+  <!-- HOTBAR DE SKILLS (ATALHOS 1, 2, 3, 4) -->
+  <div class="bottom-bar">
+    <div class="skill-slot" onclick="castSkill(1)">
+      <span class="skill-key">1</span>
+      <span class="skill-icon">🧹</span>
+      <span class="skill-name">Free()</span>
+    </div>
+    <div class="skill-slot" onclick="castSkill(2)">
+      <span class="skill-key">2</span>
+      <span class="skill-icon">⚡</span>
+      <span class="skill-name">TLB Hit</span>
+    </div>
+    <div class="skill-slot" onclick="castSkill(3)">
+      <span class="skill-key">3</span>
+      <span class="skill-icon">🛡️</span>
+      <span class="skill-name">DMA Shield</span>
+    </div>
+    <div class="skill-slot" onclick="castSkill(4)">
+      <span class="skill-key">4</span>
+      <span class="skill-icon">📖</span>
+      <span class="skill-name">Episteme</span>
+    </div>
+  </div>
 
-      <div class="sheet-footer" id="sheetFooter">
-        <button class="btn-dismiss" onclick="closeSheet()">Recuar</button>
+  <!-- MODAL DE DIÁLOGO COM NPCS -->
+  <div class="quest-dialogue" id="questDialogue">
+    <div class="npc-banner">
+      <div class="npc-portrait" id="npcIcon">🧙</div>
+      <div>
+        <div style="font-family:var(--font-pixel); font-size:10px; color:var(--gold);" id="npcTitle">MESTRE RITCHIE</div>
+        <div style="font-size:11px; color:var(--text-muted);" id="npcRole">Técnicas de Programação</div>
       </div>
     </div>
+    <div class="quest-content" id="npcDialogueText">Lore e desafio...</div>
+    <div class="quest-options" id="npcChoices"></div>
+    <button class="btn-dialogue-close" onclick="closeDialogue()">Fechar Janela</button>
   </div>
 
   <script>
     /* =========================================================
-       1. BANCO DE CONTEÚDO EXPANDIDO (SEUS MATERIAIS DE AULA)
+       1. GAME ENGINE & MUNDO MMORPG ISOMÉTRICO/TOP-DOWN
        ========================================================= */
-    const DATABASE_QUESTS = {
-      alocacao: [
-        {
-          id: "so_alloc_1",
-          guardian: "Tanenbaum dos Processos",
-          module: "Sistemas Operacionais // Memória Principal",
-          context: "O gerenciador de memória precisa acomodar um processo de 45 KB em uma lista de partições variáveis com lacunas de 100 KB, 50 KB e 120 KB[cite: 37].",
-          question: "Qual algoritmo de alocação selecionará a partição de 50 KB por ser a menor lacuna suficiente, minimizando o resíduo da partição[cite: 37]?",
-          options: [
-            { text: "Best-fit (percorre a memória e escolhe a menor lacuna suficiente)[cite: 37].", correct: true, exp: "Exato! O Best-fit seleciona a partição com o tamanho mais próximo do necessário[cite: 37]. Sua desvantagem é deixar fragmentos minúsculos e dispersos[cite: 37, 38]." },
-            { text: "Worst-fit (seleciona propositalmente a maior lacuna de 120 KB)[cite: 37].", correct: false, exp: "O Worst-fit escolhe a maior partição para deixar um espaço restante grande o suficiente para outros processos[cite: 37]." },
-            { text: "First-fit (aloca imediatamente no primeiro bloco de 100 KB)[cite: 37].", correct: false, exp: "O First-fit pega a primeira partição que encontra a partir do início da memória[cite: 37]." }
-          ]
-        },
-        {
-          id: "so_alloc_2",
-          guardian: "Sentinela da MMU",
-          module: "Sistemas Operacionais // Fragmentação & Proteção",
-          context: "Um processo tenta executar uma instrução fora do seu intervalo alocado nos registradores de hardware[cite: 106, 107].",
-          question: "Como o hardware e o SO impedem que um programa corrompa o espaço de outro na memória RAM[cite: 106, 107]?",
-          options: [
-            { text: "Verificando se o endereço gerado está entre o 'Registrador Base' e 'Base + Limite'; se ultrapassar, gera um trap para o SO[cite: 106, 107].", correct: true, exp: "Perfeito! O registrador base guarda o início da memória válida e o limite o tamanho[cite: 106]. Qualquer violação aciona uma interrupção de proteção[cite: 106, 107]." },
-            { text: "Permitindo acesso livre caso a memória seja do tipo DRAM capacitiva[cite: 30, 31].", correct: false, exp: "Incorreto! Sem proteção de base e limite, ocorreria invasão de memória entre tarefas[cite: 106]." },
-            { text: "Trocando todos os processos para o modo monitor automaticamente[cite: 104, 105].", correct: false, exp: "Instruções do usuário rodam em Modo Usuário; o Modo Monitor é exclusivo do SO[cite: 104]." }
-          ]
-        }
-      ],
-      ponteiros_heap: [
-        {
-          id: "c_ptrs_1",
-          guardian: "Mestre Dennis Ritchie",
-          module: "Linguagem C // Alocação Dinâmica",
-          context: "Seu sistema precisa cadastrar um número de alunos informado pelo usuário em tempo de execução, sem desperdiçar memória estática[cite: 180, 197].",
-          question: "Qual chamada em C aloca memória na Heap inicializando todos os bytes com zero e prevenindo lixo de memória[cite: 197]?",
-          options: [
-            { text: "calloc(n, sizeof(int)) — aloca memória contígua e zera todos os blocos[cite: 197].", correct: true, exp: "Perfeito! Enquanto malloc() aloca sem limpar a memória (mantendo lixo), calloc() zera todas as posições[cite: 197]." },
-            { text: "malloc(n * sizeof(int)) — mas sem verificar se retornou NULL[cite: 197, 200].", correct: false, exp: "Perigo! Se a memória RAM acabar, malloc retorna NULL; tentar escrever gera Segmentation Fault[cite: 185, 200]." },
-            { text: "realloc(NULL, 0) — desalocando os registros automaticamente.", correct: false, exp: "Incorreto! Para liberar memória, deve-se chamar explicitamente a função free(ptr)[cite: 197, 200]." }
-          ]
-        },
-        {
-          id: "c_ptrs_2",
-          guardian: "Forjador de Ponteiros",
-          module: "Linguagem C // Aritmética de Endereços",
-          context: "Temos um ponteiro declarado como 'int *ptr = 0x100;'. Em um sistema onde inteiros ocupam 4 bytes, executamos 'ptr++;'[cite: 184, 193, 194].",
-          question: "Para qual endereço hexadecimal físico o ponteiro apontará após o incremento[cite: 184, 193, 194]?",
-          options: [
-            { text: "0x104 — pois a aritmética avança 1 * sizeof(int) bytes[cite: 184, 194].", correct: true, exp: "Correto! Adicionar 1 a um ponteiro não soma 1 byte simples, mas sim o tamanho do tipo apontado[cite: 193, 194]." },
-            { text: "0x101 — pois incrementa exatamente 1 byte no registrador.", correct: false, exp: "Isso só ocorreria se fosse um ponteiro para caractere (char *), que ocupa 1 byte[cite: 125, 194]." },
-            { text: "0x108 — porque ponteiros sempre dobram de posição.", correct: false, exp: "Incorreto! Apenas ponteiros do tipo double avançam 8 bytes em cada incremento[cite: 194]." }
-          ]
-        }
-      ],
-      disco_io: [
-        {
-          id: "so_io_1",
-          guardian: "Controlador de E/S & DMA",
-          module: "Sistemas Operacionais // Subsistemas de I/O",
-          context: "A reitoria precisa transferir arquivos de log gigantescos do SSD para a memória RAM sem travar a interface da aplicação[cite: 60, 78].",
-          question: "Qual arquitetura de I/O permite a transferência direta entre periférico e memória sem intermediação contínua da CPU[cite: 78, 81]?",
-          options: [
-            { text: "Direct Memory Access (DMA) com sinal de interrupção ao término do bloco[cite: 78, 81].", correct: true, exp: "Exato! O controlador DMA assume o barramento e move blocos inteiros, avisando a CPU por interrupção só no final[cite: 78, 81]." },
-            { text: "I/O Programado com laço de polling ativo da CPU[cite: 78, 79].", correct: false, exp: "O I/O programado obriga o processador a esperar a resposta do dispositivo, causando ociosidade[cite: 79, 80]." },
-            { text: "Gravação síncrona sem buffer de dados no disco[cite: 66, 85].", correct: false, exp: "A ausência de buffer degrada drasticamente a performance de leitura/escrita[cite: 66]." }
-          ]
-        },
-        {
-          id: "so_fat_2",
-          guardian: "Arquivista dos Inodes",
-          module: "Sistemas Operacionais // Sistemas de Arquivos",
-          context: "O disco rígido está com dados fragmentados[cite: 74]. Na alocação por lista encadeada usando tabela na memória (FAT), como o arquivo é rastreado[cite: 75, 76]?",
-          question: "Como o sistema de arquivos localiza o final de um documento encadeado na tabela FAT[cite: 76, 77]?",
-          options: [
-            { text: "Seguindo os índices dos blocos até encontrar o valor terminador especial (-1)[cite: 76, 77].", correct: true, exp: "Perfeito! A FAT mapeia a cadeia de blocos; cada entrada aponta para o próximo bloco, e o valor -1 indica o fim do arquivo[cite: 76, 77]." },
-            { text: "Lendo obrigatoriamente todos os setores contíguos do cilindro magnético[cite: 63, 73].", correct: false, exp: "Alocação contígua sofre com fragmentação externa; a FAT permite blocos espalhados[cite: 73, 75]." },
-            { text: "Triturando os blocos que sofreram colisão da cabeça de leitura[cite: 63].", correct: false, exp: "Colisão de cabeça danifica fisicamente a superfície magnética e deve ser evitada[cite: 63]." }
-          ]
-        }
-      ],
-      boss_kernel: [
-        {
-          id: "boss_final",
-          guardian: "👾 GIGA-BUG DO KERNEL PANIC",
-          module: "Desafio Final Integrado",
-          context: "O sistema operacional entrou em estado de pânico! A memória virtual está em Thrashing (troca excessiva de páginas), ponteiros nulos foram desreferenciados e o disco está com fragmentação crítica[cite: 39, 47, 74, 185].",
-          question: "Como arquiteta de sistemas, qual sequência de ações restabelecerá o núcleo com estabilidade[cite: 46, 47, 185, 200]?",
-          options: [
-            { text: "Reduzir o Working Set ativando substituição LRU, desalocar ponteiros vazados com free() e utilizar paginação sob demanda[cite: 46, 47, 185, 200].", correct: true, exp: "👑 VITÓRIA CRÍTICA! O algoritmo LRU descarta páginas ociosas, free() limpa a Heap e a paginação sob demanda carrega apenas o código estritamente necessário[cite: 46, 47, 200]!" },
-            { text: "Desligar a MMU e converter todo o sistema para monoprogramação com partição única[cite: 35, 40].", correct: false, exp: "Derrota! Isso eliminaria a multiprogramação e travaria todos os outros usuários do sistema[cite: 35, 36]." },
-            { text: "Aumentar o quantum de tempo da CPU para infinito sem gerenciar interrupções[cite: 82, 107].", correct: false, exp: "Derrota! Um processo monopolizaria a CPU e congelaria todos os periféricos de entrada e saída[cite: 107]." }
-          ]
-        }
-      ]
-    };
-
-    /* =========================================================
-       2. MOTOR MMORPG & AVATARES ONLINE
-       ========================================================= */
-    const canvas = document.getElementById("mmoCanvas");
+    const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    let player = {
-      x: 200, y: 120,
-      targetX: 200, targetY: 120,
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    // Estado do Jogador (Amanda)
+    const player = {
+      x: 600, y: 600,
+      targetX: 600, targetY: 600,
+      speed: 3.5,
       hp: 100, maxHp: 100,
-      xp: 0, level: 1,
-      color: "#c084fc"
+      mp: 80, maxMp: 80,
+      xp: 0, maxXp: 300,
+      level: 1,
+      target: null
     };
 
-    // Outros "Jogadores" no servidor (Lobby vivo)
-    let onlinePlayers = [
-      { name: "Sifu_Wei", x: 60, y: 50, color: "#f87171", icon: "🏮", targetX: 60, targetY: 50 },
-      { name: "Calcifer_Dev", x: 320, y: 60, color: "#f59e0b", icon: "🔥", targetX: 320, targetY: 60 },
-      { name: "Coraline_Key", x: 70, y: 180, color: "#f472b6", icon: "🗝️", targetX: 70, targetY: 180 },
-      { name: "Hope_Hacker", x: 310, y: 190, color: "#38bdf8", icon: "💜", targetX: 310, targetY: 190 }
+    // Mapa Expandido do Mundo (1800 x 1800 pixels)
+    const WORLD_SIZE = 1800;
+
+    // Outros "Jogadores" no Servidor (Simulação MMORPG Co-op)
+    const otherPlayers = [
+      { name: "Linus_P", x: 650, y: 550, targetX: 650, targetY: 550, hp: 100, class: "Kernel Knight", icon: "⚔️" },
+      { name: "Ada_Dev", x: 700, y: 680, targetX: 700, targetY: 680, hp: 90, class: "Pointer Mage", icon: "🧙" },
+      { name: "Turing_99", x: 520, y: 620, targetX: 520, targetY: 620, hp: 100, class: "Logic Rogue", icon: "🏹" }
     ];
 
-    // Chat randômico simulado
-    const randomChats = [
-      "Alguém revisando a Tabela FAT para a prova?",
-      "Cuidado com ponteiro NULL sem verificação!",
-      "Achei a TLB Hit muito mais rápida que o disco!",
-      "Parabéns Amanda pelo level up!",
-      "Best-fit gera fragmentos pequenos demais..."
-    ];
-    setInterval(() => {
-      if (Math.random() > 0.4) {
-        const p = onlinePlayers[Math.floor(Math.random() * onlinePlayers.length)];
-        const msg = randomChats[Math.floor(Math.random() * randomChats.length)];
-        addChat(p.name, msg);
+    // NPCs Acadêmicos
+    const npcs = [
+      {
+        id: "ritchie",
+        name: "Mestre Dennis Ritchie",
+        role: "Técnicas de Programação (Linguagem C)",
+        x: 450, y: 450,
+        icon: "📜",
+        dialogue: "Saudações, Amanda! A memória física do nosso reino foi corrompida por escaninhos órfãos sem desalocação[cite: 184, 185]. Precisamos forjar ponteiros seguros!",
+        challenge: {
+          q: "Você recebe o endereço '0x104' de uma variável inteira 'int valor = 42;'[cite: 184]. Como sua função deve operar para dobrar esse valor no local físico sem criar cópias na pilha[cite: 184, 188]?",
+          opts: [
+            { t: "Receber 'int *p' e aplicar '*p = 84;' desreferenciando o ponteiro[cite: 184, 188].", ok: true, exp: "Exato! '&' obtém o endereço e '*' manipula o conteúdo no escaninho de memória sem gastar pilha[cite: 184, 188]!" },
+            { t: "Passar 'valor' por cópia direta com 'valor = 84;'[cite: 180, 184].", ok: false, exp: "Isso alteraria apenas a cópia local da função, deixando o escaninho original inalterado[cite: 180, 184]." },
+            { t: "Alocar com 'malloc(100)' e nunca chamar 'free()'[cite: 185, 197].", ok: false, exp: "Isso cria um terrível Vazamento de Memória (Memory Leak) que derruba o sistema por exaustão de RAM[cite: 185]!" }
+          ]
+        }
+      },
+      {
+        id: "tanenbaum",
+        name: "Guardião Tanenbaum",
+        role: "Sistemas Operacionais (Memória Virtual)",
+        x: 850, y: 450,
+        icon: "🏛️",
+        dialogue: "Os processos estão em disputa violenta por quadros de página na memória física[cite: 39, 44]! A Unidade de Gerenciamento de Memória (MMU) precisa de diretrizes[cite: 40].",
+        challenge: {
+          q: "A CPU gera uma referência ao endereço lógico (Página 2, deslocamento 50)[cite: 45, 51]. Como garantir a menor latência possível sem acionar o disco rígido[cite: 49, 50]?",
+          opts: [
+            { t: "Consultar a cache TLB (Translation Lookaside Buffer); ocorrendo TLB Hit, obtém o bloco físico imediatamente[cite: 49, 50].", ok: true, exp: "Perfeito! O TLB Hit evita ler a tabela no disco ou RAM, alavancando a localidade temporal[cite: 46, 50]!" },
+            { t: "Acessar a memória secundária em disco a cada instrução executada[cite: 30, 48].", ok: false, exp: "O disco é até 6 ordens de magnitude mais lento que a memória principal[cite: 30]!" },
+            { t: "Forçar paginação monousuária desativando a multiprogramação[cite: 33, 35].", ok: false, exp: "Isso destruiria a capacidade do computador de executar processos em paralelo[cite: 35, 103]." }
+          ]
+        }
+      },
+      {
+        id: "socrates",
+        name: "Oráculo Socrático",
+        role: "Construção do Pensamento Filosófico",
+        x: 650, y: 850,
+        icon: "🦉",
+        dialogue: "De nada vale dominar circuitos e pontes de barramento se sua mente for refém de preconceitos e falácias lógicas, Amanda.",
+        challenge: {
+          q: "Em um debate sobre inteligência e sistemas computacionais, como sustentar uma tese sem incorrer em sofismas?",
+          opts: [
+            { t: "Diferenciando doxa (mera opinião subjetiva) de episteme (conhecimento fundamentado por método e evidências).", ok: true, exp: "Brilhante! O rigor dialético e acadêmico exige bases sólidas e refutação demonstrável." },
+            { t: "Impondo uma conclusão pelo prestígio do orador (falácia de autoridade).", ok: false, exp: "Argumentos de autoridade são falácias que violam o livre exame racional." }
+          ]
+        }
       }
-    }, 7000);
+    ];
 
-    function addChat(user, text) {
-      const box = document.getElementById("mmoChat");
-      const d = document.createElement("div");
-      d.className = "chat-msg";
-      d.innerHTML = `<span class="chat-user">${user}:</span> ${text}`;
-      box.appendChild(d);
-      box.scrollTop = box.scrollHeight;
-      if (box.children.length > 8) box.removeChild(box.children[0]);
-    }
+    // Inimigos do Mapa (Bugs / Monstros Conceituais)
+    let monsters = [
+      { id: 1, name: "Vazamento de Heap", hp: 80, maxHp: 80, x: 420, y: 650, icon: "👾", type: "heap" },
+      { id: 2, name: "TLB Miss Daemon", hp: 100, maxHp: 100, x: 800, y: 680, icon: "💀", type: "tlb" },
+      { id: 3, name: "Fragmentação Externa", hp: 90, maxHp: 90, x: 550, y: 400, icon: "🕸️", type: "frag" },
+      { id: 4, name: "Giga-Bug do Kernel", hp: 200, maxHp: 200, x: 750, y: 780, icon: "👹", type: "boss" }
+    ];
 
-    // Touch no canvas para mover
+    // Projéteis / Efeitos de Magia
+    let spellEffects = [];
+
+    /* =========================================================
+       2. CONTROLE DE TOQUE, MOUSE E MOVIMENTO
+       ========================================================= */
+    let touchStartPos = null;
+
     canvas.addEventListener("pointerdown", e => {
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      player.targetX = (e.clientX - rect.left) * scaleX;
-      player.targetY = (e.clientY - rect.top) * scaleY;
+      // Coordenadas mundiais baseadas na câmera
+      const worldClickX = e.clientX - canvas.width / 2 + player.x;
+      const worldClickY = e.clientY - canvas.height / 2 + player.y;
+
+      // 1. Checa clique em NPC
+      for (let n of npcs) {
+        if (Math.hypot(worldClickX - n.x, worldClickY - n.y) < 35) {
+          openNpcDialogue(n);
+          return;
+        }
+      }
+
+      // 2. Checa clique em Monstro (Target Lock)
+      for (let m of monsters) {
+        if (Math.hypot(worldClickX - m.x, worldClickY - m.y) < 35) {
+          lockTarget(m);
+          return;
+        }
+      }
+
+      // 3. Move o jogador até o ponto tocado no chão
+      player.targetX = Math.max(40, Math.min(WORLD_SIZE - 40, worldClickX));
+      player.targetY = Math.max(40, Math.min(WORLD_SIZE - 40, worldClickY));
     });
 
-    function updateMMO() {
-      // Movimento suave da Amanda
-      player.x += (player.targetX - player.x) * 0.12;
-      player.y += (player.targetY - player.y) * 0.12;
-
-      // Movimento errante dos outros players
-      onlinePlayers.forEach(p => {
-        if (Math.random() < 0.02) {
-          p.targetX = Math.max(30, Math.min(canvas.width - 30, p.x + (Math.random() * 60 - 30)));
-          p.targetY = Math.max(30, Math.min(canvas.height - 30, p.y + (Math.random() * 60 - 30)));
-        }
-        p.x += (p.targetX - p.x) * 0.05;
-        p.y += (p.targetY - p.y) * 0.05;
-      });
+    function lockTarget(m) {
+      player.target = m;
+      document.getElementById("target-plate").style.display = "flex";
+      document.getElementById("target-name").innerText = m.name.toUpperCase();
+      updateTargetHp();
+      logChat("SISTEMA", `Alvo travado: ${m.name}`);
     }
 
-    function drawMMO() {
-      // Fundo do Kernel
-      ctx.fillStyle = "#030712";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    function updateTargetHp() {
+      if (!player.target) return;
+      const pct = Math.max(0, (player.target.hp / player.target.maxHp) * 100);
+      document.getElementById("target-hp-bar").style.width = `${pct}%`;
+    }
 
-      // Barramentos
-      ctx.fillStyle = "#1e1b4b";
-      ctx.fillRect(0, 110, canvas.width, 20);
-      ctx.fillRect(190, 0, 20, canvas.height);
+    /* =========================================================
+       3. SISTEMA DE COMBATE & SKILLS ATIVAS
+       ========================================================= */
+    function castSkill(num) {
+      if (player.mp < 15) {
+        logChat("SISTEMA", "Mana insuficiente!");
+        return;
+      }
 
-      // Zonas de Setor
-      ctx.strokeStyle = "rgba(99, 102, 241, 0.3)";
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(20, 20, 120, 75);
-      ctx.strokeRect(260, 20, 120, 75);
-      ctx.strokeRect(20, 145, 120, 75);
-      ctx.strokeRect(260, 145, 120, 75);
+      if (!player.target) {
+        logChat("SISTEMA", "Selecione um monstro no mapa primeiro!");
+        return;
+      }
 
-      // Desenha outros jogadores
-      onlinePlayers.forEach(p => {
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x - 6, p.y - 6, 12, 12);
-        ctx.font = "12px serif";
-        ctx.fillText(p.icon, p.x - 7, p.y - 8);
+      player.mp -= 15;
+      updateHud();
 
-        ctx.fillStyle = "#94a3b8";
-        ctx.font = "8px 'Inter'";
-        ctx.fillText(p.name, p.x - 14, p.y + 14);
+      const m = player.target;
+      let damage = 25;
+      let spellName = "FREE()";
+
+      if (num === 1) { // Free()
+        damage = m.type === "heap" ? 50 : 30; // Crítico em vazamentos de heap!
+        spellName = "FREE() [Desalocação]";
+      } else if (num === 2) { // TLB Burst
+        damage = m.type === "tlb" ? 60 : 25;
+        spellName = "TLB_BURST [Localidade Temporal]";
+      } else if (num === 3) { // DMA Shield
+        player.hp = Math.min(player.maxHp, player.hp + 30);
+        damage = 15;
+        spellName = "DMA_SHIELD [Canal Direto]";
+      } else if (num === 4) { // Episteme
+        damage = 35;
+        spellName = "EPISTEME [Refutação Dialética]";
+      }
+
+      // Animação de projétil
+      spellEffects.push({
+        fromX: player.x, fromY: player.y,
+        toX: m.x, toY: m.y,
+        progress: 0,
+        text: `-${damage}`
       });
 
-      // Desenha Amanda
-      ctx.fillStyle = player.color;
-      ctx.fillRect(player.x - 8, player.y - 8, 16, 16);
+      m.hp -= damage;
+      updateTargetHp();
+      logChat("AMANDA", `Lançou ${spellName} causando ${damage} de dano!`);
+
+      if (m.hp <= 0) {
+        logChat("LOOT", `Monstro derrotado! +120 XP e 1x Fragmento de Inode!`);
+        player.xp += 120;
+        if (player.xp >= player.maxXp) {
+          player.level++;
+          player.xp = 0;
+          player.maxHp += 20; player.hp = player.maxHp;
+          player.maxMp += 20; player.mp = player.maxMp;
+          logChat("SERVER", `LEVEL UP! Amanda alcançou o Nível ${player.level}!`);
+        }
+        updateHud();
+        monsters = monsters.filter(item => item.id !== m.id);
+        player.target = null;
+        document.getElementById("target-plate").style.display = "none";
+      }
+    }
+
+    /* =========================================================
+       4. LOOP PRINCIPAL & RENDERIZAÇÃO COM CÂMERA DINÂMICA
+       ========================================================= */
+    function update() {
+      // Movimento do Jogador
+      const dist = Math.hypot(player.targetX - player.x, player.targetY - player.y);
+      if (dist > 5) {
+        player.x += ((player.targetX - player.x) / dist) * player.speed;
+        player.y += ((player.targetY - player.y) / dist) * player.speed;
+      }
+
+      // Movimento autônomo dos outros players online
+      otherPlayers.forEach(p => {
+        if (Math.random() < 0.02) {
+          p.targetX = Math.max(100, Math.min(WORLD_SIZE - 100, p.x + (Math.random() * 80 - 40)));
+          p.targetY = Math.max(100, Math.min(WORLD_SIZE - 100, p.y + (Math.random() * 80 - 40)));
+        }
+        const d = Math.hypot(p.targetX - p.x, p.targetY - p.y);
+        if (d > 4) {
+          p.x += ((p.targetX - p.x) / d) * 2;
+          p.y += ((p.targetY - p.y) / d) * 2;
+        }
+      });
+
+      // Regeneração passiva de MP
+      if (player.mp < player.maxMp) {
+        player.mp += 0.05;
+        updateHud();
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Câmera Centralizada em Amanda
+      const camX = canvas.width / 2 - player.x;
+      const camY = canvas.height / 2 - player.y;
+
+      ctx.save();
+      ctx.translate(camX, camY);
+
+      // 1. Grade do Terreno do Kernel (Chão de Circuito)
+      ctx.fillStyle = "#070914";
+      ctx.fillRect(0, 0, WORLD_SIZE, WORLD_SIZE);
+
+      ctx.strokeStyle = "rgba(99, 102, 241, 0.12)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x < WORLD_SIZE; x += 60) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_SIZE); ctx.stroke();
+      }
+      for (let y = 0; y < WORLD_SIZE; y += 60) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_SIZE, y); ctx.stroke();
+      }
+
+      // Barramentos Centrais
+      ctx.fillStyle = "#1e1b4b";
+      ctx.fillRect(0, 580, WORLD_SIZE, 40);
+      ctx.fillRect(580, 0, 40, WORLD_SIZE);
+
+      // 2. Desenha NPCs
+      npcs.forEach(n => {
+        ctx.fillStyle = "#fbbf24";
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, 16, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.font = "20px serif";
+        ctx.fillText(n.icon, n.x - 10, n.y + 7);
+
+        // Ícone de Missão flutuante '!'
+        ctx.fillStyle = "#fbbf24";
+        ctx.font = "10px 'Press Start 2P'";
+        ctx.fillText("!", n.x - 4, n.y - 24);
+
+        ctx.fillStyle = "#f8fafc";
+        ctx.font = "10px 'Inter'";
+        ctx.fillText(n.name, n.x - 30, n.y + 30);
+      });
+
+      // 3. Desenha Monstros
+      monsters.forEach(m => {
+        ctx.font = "24px serif";
+        ctx.fillText(m.icon, m.x - 12, m.y + 8);
+
+        // Barrinha de Vida do Monstro
+        ctx.fillStyle = "#000";
+        ctx.fillRect(m.x - 18, m.y - 22, 36, 5);
+        ctx.fillStyle = "#ef4444";
+        ctx.fillRect(m.x - 18, m.y - 22, (m.hp / m.maxHp) * 36, 5);
+
+        ctx.fillStyle = "#ef4444";
+        ctx.font = "9px 'Inter'";
+        ctx.fillText(m.name, m.x - 24, m.y + 24);
+      });
+
+      // 4. Desenha Outros Jogadores Online
+      otherPlayers.forEach(p => {
+        ctx.fillStyle = "#38bdf8";
+        ctx.fillRect(p.x - 8, p.y - 8, 16, 16);
+        ctx.font = "12px serif";
+        ctx.fillText(p.icon, p.x - 6, p.y - 10);
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "9px 'Inter'";
+        ctx.fillText(p.name, p.x - 18, p.y + 20);
+      });
+
+      // 5. Desenha Amanda (Avatar em Pixel Art)
+      ctx.fillStyle = "#c084fc"; // Borahae Purple
+      ctx.fillRect(player.x - 10, player.y - 10, 20, 20);
       ctx.fillStyle = "#fff";
-      ctx.fillRect(player.x - 4, player.y - 4, 3, 3);
-      ctx.fillRect(player.x + 1, player.y - 4, 3, 3);
+      ctx.fillRect(player.x - 5, player.y - 6, 3, 3);
+      ctx.fillRect(player.x + 2, player.y - 6, 3, 3);
 
       ctx.fillStyle = "#fbbf24";
-      ctx.font = "9px 'Press Start 2P'";
-      ctx.fillText("AMANDA", player.x - 22, player.y - 12);
+      ctx.font = "8px 'Press Start 2P'";
+      ctx.fillText("AMANDA", player.x - 22, player.y - 16);
+
+      // Círculo de seleção no monstro travado
+      if (player.target) {
+        ctx.strokeStyle = "#ef4444";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(player.target.x, player.target.y, 22, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Efeitos de Magia
+      spellEffects.forEach((sp, i) => {
+        sp.progress += 0.08;
+        const curX = sp.fromX + (sp.toX - sp.fromX) * sp.progress;
+        const curY = sp.fromY + (sp.toY - sp.fromY) * sp.progress;
+
+        ctx.fillStyle = "#06b6d4";
+        ctx.beginPath(); ctx.arc(curX, curY, 6, 0, Math.PI*2); ctx.fill();
+
+        if (sp.progress >= 1) {
+          ctx.fillStyle = "#f59e0b";
+          ctx.font = "11px 'Press Start 2P'";
+          ctx.fillText(sp.text, sp.toX - 10, sp.toY - 30);
+          spellEffects.splice(i, 1);
+        }
+      });
+
+      ctx.restore();
     }
 
     function gameLoop() {
-      updateMMO();
-      drawMMO();
+      update();
+      draw();
       requestAnimationFrame(gameLoop);
     }
 
     /* =========================================================
-       3. INTERAÇÕES DE QUEST & BOSS FIGHT
+       5. SISTEMA DE DIÁLOGO E INTERAÇÕES ACADÊMICAS
        ========================================================= */
-    let currentQuestPool = [];
-    let currentQuestIdx = 0;
+    function openNpcDialogue(n) {
+      document.getElementById("npcTitle").innerText = n.name.toUpperCase();
+      document.getElementById("npcRole").innerText = n.role;
+      document.getElementById("npcIcon").innerText = n.icon;
+      document.getElementById("npcDialogueText").innerHTML = `
+        <p style="margin-bottom:8px;">${n.dialogue}</p>
+        <p style="font-weight:700; color:var(--gold);">${n.challenge.q}</p>
+      `;
 
-    function openDistrict(category) {
-      currentQuestPool = DATABASE_QUESTS[category];
-      currentQuestIdx = 0;
-      loadQuestModal(currentQuestPool[currentQuestIdx]);
-    }
-
-    function loadQuestModal(q) {
-      document.getElementById("sheetGuardian").innerText = q.guardian;
-      document.getElementById("sheetModule").innerText = q.module;
-      document.getElementById("sheetContext").innerText = q.context;
-      document.getElementById("sheetQuestion").innerText = q.question;
-
-      const optsBox = document.getElementById("sheetOptions");
+      const optsBox = document.getElementById("npcChoices");
       optsBox.innerHTML = "";
 
-      q.options.forEach((opt, idx) => {
+      n.challenge.opts.forEach(opt => {
         const btn = document.createElement("button");
-        btn.className = "btn-quest-opt";
-        btn.innerHTML = `<strong>${String.fromCharCode(65 + idx)})</strong> ${opt.text}`;
-        btn.onclick = () => handleAnswer(q, opt);
+        btn.className = "btn-quest-choice";
+        btn.innerText = opt.t;
+        btn.onclick = () => {
+          if (opt.ok) {
+            logChat("LOOT", `Missão cumprida! +150 XP acadêmico!`);
+            player.xp += 150;
+            if (player.xp >= player.maxXp) {
+              player.level++; player.xp = 0;
+            }
+            updateHud();
+            document.getElementById("npcDialogueText").innerHTML = `
+              <p style="color:var(--exp); font-weight:700;">🌟 CONCEITO ASSIMILADO COM SUCESSO!</p>
+              <p style="margin-top:6px;">${opt.exp}</p>
+            `;
+            optsBox.innerHTML = "";
+          } else {
+            logChat("SISTEMA", "Falha conceitual! Tente novamente.");
+            document.getElementById("npcDialogueText").innerHTML = `
+              <p style="color:var(--hp); font-weight:700;">⚠️ PREMISSA INCORRETA!</p>
+              <p style="margin-top:6px;">${opt.exp}</p>
+            `;
+          }
+        };
         optsBox.appendChild(btn);
       });
 
-      document.getElementById("sheetFooter").innerHTML = `
-        <button class="btn-dismiss" onclick="closeSheet()">Recuar</button>
-      `;
-
-      document.getElementById("questSheet").classList.add("active");
+      document.getElementById("questDialogue").classList.add("open");
     }
 
-    function handleAnswer(q, opt) {
-      const panel = document.getElementById("sheetPanel");
-      const footer = document.getElementById("sheetFooter");
-
-      if (opt.correct) {
-        player.xp += 150;
-        addChat("SISTEMA", `Amanda dominou o conceito de [${q.module}]! +150 XP`);
-
-        if (player.xp >= 450 && player.level === 1) {
-          player.level = 2;
-          document.getElementById("hud-level").innerText = "LVL 2 • ARQUITETA DO KERNEL";
-          addChat("SISTEMA", "🔥 Amanda subiu para o NÍVEL 2!");
-        }
-
-        panel.innerHTML = `
-          <div style="color:var(--success); font-weight:700; font-size:14px; margin-bottom:8px;">
-            🌟 SUCESSO NO PROCEDIMENTO!
-          </div>
-          <div style="font-size:13px; line-height:1.5; color:#cbd5e1;">${opt.exp}</div>
-        `;
-      } else {
-        player.hp = Math.max(10, player.hp - 20);
-        document.getElementById("hp-bar").style.width = `${player.hp}%`;
-        document.getElementById("hp-text").innerText = `${player.hp}/100`;
-
-        panel.innerHTML = `
-          <div style="color:var(--error); font-weight:700; font-size:14px; margin-bottom:8px;">
-            ⚠️ FALHA NO PROCEDIMENTO! (-20 HP)
-          </div>
-          <div style="font-size:13px; line-height:1.5; color:#cbd5e1;">${opt.exp}</div>
-        `;
-      }
-
-      updateHUD();
-
-      footer.innerHTML = `
-        <button class="btn-bubble" style="background:var(--accent); color:#000; font-weight:700; padding:10px 16px;" onclick="closeSheet()">Prosseguir ❯</button>
-      `;
+    function closeDialogue() {
+      document.getElementById("questDialogue").classList.remove("open");
     }
 
-    function closeSheet() {
-      document.getElementById("questSheet").classList.remove("active");
+    function updateHud() {
+      document.getElementById("player-lvl").innerText = `LVL ${player.level}`;
+      document.getElementById("hp-bar").style.width = `${(player.hp / player.maxHp) * 100}%`;
+      document.getElementById("mp-bar").style.width = `${(player.mp / player.maxMp) * 100}%`;
+      document.getElementById("xp-bar").style.width = `${(player.xp / player.maxXp) * 100}%`;
     }
 
-    function updateHUD() {
-      document.getElementById("xp-text").innerText = `${player.xp}/500`;
-      document.getElementById("xp-bar").style.width = `${Math.min(100, (player.xp / 500) * 100)}%`;
+    function logChat(author, text) {
+      const box = document.getElementById("mmo-chat");
+      const r = document.createElement("div");
+      r.className = "chat-row";
+      if (author === "LOOT") r.innerHTML = `<span class="chat-loot">[RECOMPENSA]:</span> ${text}`;
+      else if (author === "SERVER") r.innerHTML = `<span class="chat-server">[SERVIDOR]:</span> ${text}`;
+      else r.innerHTML = `<span class="chat-author">${author}:</span> ${text}`;
+      box.appendChild(r);
+      box.scrollTop = box.scrollHeight;
     }
 
-    function setMmoTheme(th, e) {
-      document.body.setAttribute("data-theme", th);
-      document.querySelectorAll(".btn-theme").forEach(b => b.classList.remove("active"));
-      if (e) e.target.classList.add("active");
-      player.color = getComputedStyle(document.body).getPropertyValue("--accent").trim();
-    }
-
-    window.addEventListener("DOMContentLoaded", () => {
-      setMmoTheme("bts");
-      updateHUD();
-      gameLoop();
-    });
+    // Inicialização
+    updateHud();
+    gameLoop();
   </script>
 </body>
 </html>
